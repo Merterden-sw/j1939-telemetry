@@ -1,0 +1,56 @@
+# ---------------------------------------------------------------------------
+# J1939 Telemetri Kontrol Paneli
+#
+#   docker compose up --build      -> http://localhost:8080
+# ---------------------------------------------------------------------------
+
+services:
+  backend_telemetry:
+    build:
+      context: ./backend
+      target: base
+    image: j1939/backend-telemetry:latest
+    container_name: j1939_backend
+    restart: unless-stopped
+    environment:
+      SIM_TICK_MS: "100"          # J1939 CCVS1 yayin periyodu
+      MAX_SPEED_KMH: "180"        # arayuzden enjekte edilebilir ust sinir
+      SIM_ACCEL_KMH_S: "5"
+      SIM_DECEL_KMH_S: "7"
+      LOG_LEVEL: "info"
+      CORS_ORIGINS: "*"
+    ports:
+      - "8000:8000"               # dogrudan API/Swagger erisimi (/docs)
+    networks:
+      - can_net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 8s
+
+  frontend:
+    build:
+      context: ./frontend
+    image: j1939/frontend:latest
+    container_name: j1939_frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      backend_telemetry:
+        condition: service_healthy
+    networks:
+      - can_net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+networks:
+  can_net:
+    driver: bridge
+    name: j1939_can_net

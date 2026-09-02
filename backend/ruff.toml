@@ -1,0 +1,16 @@
+line-length = 100
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM"]
+ignore = [
+    "B008",  # FastAPI Depends() varsayilan argumanda kullanilir
+    "E501",  # satir uzunlugu formatter tarafindan yonetilir
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["SIM117", "SIM300"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

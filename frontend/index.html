@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>J1939 Telemetri Kontrol Paneli</title>
+  <meta name="description" content="PGN 65265 / SPN 84 tabanli arac hizi simulasyonu ve canli CAN izleme paneli" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🚚</text></svg>" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ===================================================================== -->
+  <!-- Ust bar: kimlik, filo istatistikleri, baglanti durumu                  -->
+  <!-- ===================================================================== -->
+  <header class="topbar">
+    <div class="topbar__brand">
+      <span class="topbar__logo">J1939</span>
+      <div>
+        <h1>Telemetri Kontrol Paneli</h1>
+        <p class="topbar__sub">PGN 65265 &middot; CCVS1 &middot; SPN 84 Wheel-Based Vehicle Speed</p>
+      </div>
+    </div>
+
+    <div class="topbar__stats" id="stats">
+      <div class="stat"><span class="stat__label">Arac</span><span class="stat__value" id="stat-online">0/0</span></div>
+      <div class="stat"><span class="stat__label">Hareketli</span><span class="stat__value" id="stat-moving">0</span></div>
+      <div class="stat"><span class="stat__label">Frame/sn</span><span class="stat__value" id="stat-fps">0</span></div>
+      <div class="stat"><span class="stat__label">Toplam TX</span><span class="stat__value" id="stat-tx">0</span></div>
+    </div>
+
+    <div class="conn" id="conn" data-state="connecting">
+      <span class="conn__dot"></span><span class="conn__text">Baglaniyor…</span>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <!-- =================================================================== -->
+    <!-- Sol sutun: arac secim paneli + canli izleme tablosu                  -->
+    <!-- =================================================================== -->
+    <div class="column column--main">
+
+      <section class="panel panel--fleet">
+        <div class="panel__head">
+          <h2>Filo <span class="badge" id="fleet-count">30 arac</span></h2>
+          <div class="panel__tools">
+            <input type="search" id="search" class="input input--search"
+                   placeholder="Marka veya model ara…" aria-label="Arac ara" />
+            <select id="brand-filter" class="input" aria-label="Marka filtresi">
+              <option value="">Tum markalar</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fleet-actions">
+          <button class="btn btn--ghost" data-fleet-action="auto_all">Tumu Otomatik</button>
+          <button class="btn btn--ghost" data-fleet-action="manual_all">Tumu Manuel</button>
+          <button class="btn btn--ghost" data-fleet-action="resume_all">Tumu Cevrimici</button>
+          <button class="btn btn--danger" data-fleet-action="stop_all">Tumunu Durdur</button>
+        </div>
+
+        <div class="panel__body" id="fleet"></div>
+      </section>
+
+      <section class="panel panel--monitor">
+        <div class="panel__head">
+          <h2>Canli Izleme</h2>
+          <span class="badge" id="monitor-updated">—</span>
+        </div>
+        <div class="panel__body panel__body--table">
+          <table class="monitor">
+            <thead>
+              <tr>
+                <th>Arac</th>
+                <th>CAN ID</th>
+                <th class="num">Hiz</th>
+                <th class="bar-col">Gosterge</th>
+                <th class="num">SPN 84 Ham</th>
+                <th>Veri Alani (HEX)</th>
+                <th class="num">TX</th>
+              </tr>
+            </thead>
+            <tbody id="monitor-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- Sag sutun: hiz enjektoru + CAN bus log                               -->
+    <!-- =================================================================== -->
+    <aside class="column column--side">
+
+      <section class="panel panel--control">
+        <div class="panel__head">
+          <h2>Hiz Enjektoru</h2>
+          <span class="badge badge--mono" id="selected-canid">--</span>
+        </div>
+
+        <div class="panel__body">
+          <p class="empty" id="control-empty">Komut gondermek icin soldaki listeden bir arac secin.</p>
+
+          <div class="control" id="control-form" hidden>
+
+            <div class="control__identity">
+              <span class="control__brand" id="sel-brand">—</span>
+              <h3 id="sel-model">—</h3>
+              <p class="control__meta">
+                <span id="sel-segment">—</span> &middot;
+                <span id="sel-power">—</span> HP &middot;
+                SA <span id="sel-sa" class="mono">—</span>
+              </p>
+            </div>
+
+            <div class="gauge">
+              <svg viewBox="0 0 200 120" class="gauge__svg" aria-hidden="true">
+                <path class="gauge__track" d="M20 110 A 80 80 0 0 1 180 110" />
+                <path class="gauge__value" id="gauge-arc" d="M20 110 A 80 80 0 0 1 180 110" />
+              </svg>
+              <div class="gauge__readout">
+                <span class="gauge__number" id="gauge-speed">0.0</span>
+                <span class="gauge__unit">km/h</span>
+              </div>
+              <p class="gauge__target">Hedef: <span id="gauge-target">0</span> km/h</p>
+            </div>
+
+            <label class="field" for="speed-slider">
+              <span class="field__label">Hiz Enjeksiyonu (SPN 84)</span>
+              <input type="range" id="speed-slider" min="0" max="180" step="1" value="0" class="slider" />
+            </label>
+
+            <div class="injector">
+              <input type="number" id="speed-input" min="0" max="180" step="0.1" value="0"
+                     class="input input--number" aria-label="Hiz degeri" />
+              <span class="injector__unit">km/h</span>
+              <button class="btn btn--primary" id="inject-btn">Gonder</button>
+              <button class="btn btn--ghost" id="inject-instant-btn"
+                      title="Ivme rampasini atlayarak dogrudan uygula">Anlik</button>
+            </div>
+
+            <div class="presets" id="presets">
+              <button class="btn btn--chip" data-speed="0">0</button>
+              <button class="btn btn--chip" data-speed="30">30</button>
+              <button class="btn btn--chip" data-speed="50">50</button>
+              <button class="btn btn--chip" data-speed="80">80</button>
+              <button class="btn btn--chip" data-speed="90">90</button>
+              <button class="btn btn--chip" data-speed="120">120</button>
+              <button class="btn btn--chip" data-speed="180">180</button>
+            </div>
+
+            <div class="toggles">
+              <button class="toggle is-danger" id="tg-brake"><span class="toggle__led"></span>Fren (SPN 597)</button>
+              <button class="toggle is-danger" id="tg-parking"><span class="toggle__led"></span>El Freni (SPN 70)</button>
+              <button class="toggle" id="tg-cruise"><span class="toggle__led"></span>Cruise (SPN 595/86)</button>
+              <button class="toggle" id="tg-online"><span class="toggle__led"></span>ECU Cevrimici</button>
+            </div>
+
+            <div class="modes" role="group" aria-label="Surus modu">
+              <button class="btn btn--mode" data-mode="manual">Manuel</button>
+              <button class="btn btn--mode" data-mode="auto">Otomatik</button>
+              <button class="btn btn--mode" data-mode="idle">Rolanti</button>
+            </div>
+
+            <div class="frame-view">
+              <span class="frame-view__label">Uretilen CAN Frame</span>
+              <code class="frame-view__value mono" id="frame-current">--</code>
+              <div class="frame-bytes mono" id="frame-bytes"></div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <section class="panel panel--log">
+        <div class="panel__head">
+          <h2>CAN Bus Log <span class="badge badge--mono">29-bit EXT</span></h2>
+          <div class="panel__tools">
+            <label class="check"><input type="checkbox" id="log-all" /> Tum filo</label>
+            <button class="btn btn--ghost" id="log-pause">Duraklat</button>
+            <button class="btn btn--ghost" id="log-clear">Temizle</button>
+          </div>
+        </div>
+        <div class="log mono" id="log" role="log" aria-live="off"></div>
+      </section>
+
+    </aside>
+
+  </main>
+
+  <footer class="footer">
+    <span>SAE J1939-21 / J1939-71 &middot; CCVS1 100 ms periyot</span>
+    <span id="footer-endpoint" class="mono">—</span>
+  </footer>
+
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

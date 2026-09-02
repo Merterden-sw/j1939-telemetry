@@ -1,0 +1,237 @@
+# ---------------------------------------------------------------------------
+# CI/CD - J1939 Telemetri Kontrol Paneli
+#
+# Bu workflow dosyasi depo kokunde .github/workflows/ altinda bulunmalidir.
+# Proje bir alt dizinde duruyorsa asagidaki PROJECT_DIR degerini guncelleyin
+# (ornek: PROJECT_DIR: j1939-telemetry).
+# ---------------------------------------------------------------------------
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+env:
+  PROJECT_DIR: .
+  PYTHON_VERSION: "3.12"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # -------------------------------------------------------------------------
+  # 1) Backend: statik analiz + birim/entegrasyon testleri
+  # -------------------------------------------------------------------------
+  backend-test:
+    name: Backend · lint & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python kurulumu
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ env.PROJECT_DIR }}/backend/requirements-dev.txt
+
+      - name: Bagimliliklari yukle
+        working-directory: ${{ env.PROJECT_DIR }}/backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Ruff (lint + bicim kontrolu)
+        working-directory: ${{ env.PROJECT_DIR }}/backend
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Pytest
+        working-directory: ${{ env.PROJECT_DIR }}/backend
+        run: python -m pytest -v --junit-xml=test-results.xml
+
+      - name: Test sonuclarini yukle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: ${{ env.PROJECT_DIR }}/backend/test-results.xml
+          if-no-files-found: ignore
+
+  # -------------------------------------------------------------------------
+  # 2) Frontend: sozdizimi ve varlik dogrulamasi
+  # -------------------------------------------------------------------------
+  frontend-check:
+    name: Frontend · sozdizimi kontrolu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: JavaScript sozdizimi
+        working-directory: ${{ env.PROJECT_DIR }}/frontend
+        run: for file in js/*.js; do node --check "$file"; done
+
+      - name: Zorunlu dosyalar mevcut mu
+        working-directory: ${{ env.PROJECT_DIR }}/frontend
+        run: |
+          test -f index.html
+          test -f css/styles.css
+          test -f nginx.conf
+          echo "Frontend varliklari eksiksiz."
+
+  # -------------------------------------------------------------------------
+  # 3) Docker imajlarinin derlenmesi ve konteyner ici testler
+  # -------------------------------------------------------------------------
+  docker-build:
+    name: Docker · build & test
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-check]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Buildx kurulumu
+        uses: docker/setup-buildx-action@v3
+
+      - name: Backend imaji (test katmani)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.PROJECT_DIR }}/backend
+          target: test
+          tags: j1939/backend-telemetry:test
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Testleri konteyner icinde calistir
+        run: docker run --rm j1939/backend-telemetry:test
+
+      - name: Backend imaji (calisma katmani)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.PROJECT_DIR }}/backend
+          target: base
+          tags: j1939/backend-telemetry:latest
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Frontend imaji
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.PROJECT_DIR }}/frontend
+          tags: j1939/frontend:latest
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Imaj boyutlari
+        run: docker images "j1939/*" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+
+  # -------------------------------------------------------------------------
+  # 4) Uctan uca: docker compose ile ayaga kaldir ve dogrula
+  # -------------------------------------------------------------------------
+  compose-smoke-test:
+    name: Compose · uctan uca duman testi
+    runs-on: ubuntu-latest
+    needs: docker-build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ortami ayaga kaldir
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: docker compose up --build -d
+
+      - name: Servislerin saglikli olmasini bekle
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/api/health > /dev/null \
+               && curl -fsS http://localhost:8080/healthz > /dev/null; then
+              echo "Servisler hazir (deneme $attempt)."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::Servisler zaman asimina ugradi"
+          docker compose logs
+          exit 1
+
+      - name: REST uclarini dogrula
+        run: |
+          set -euo pipefail
+
+          echo "--- /api/health ---"
+          curl -fsS http://localhost:8000/api/health | tee /tmp/health.json
+          grep -q '"status":"ok"' /tmp/health.json
+
+          echo "--- filo 30 arac icermeli ---"
+          count=$(curl -fsS http://localhost:8000/api/vehicles | python3 -c \
+            "import json,sys; print(len(json.load(sys.stdin)['states']))")
+          test "$count" = "30"
+
+          echo "--- SPN 84 kodlamasi: 60 km/h -> 18FEF100#F3003C0000FF1FFF ---"
+          frame=$(curl -fsS -X POST http://localhost:8000/api/j1939/encode \
+            -H 'Content-Type: application/json' \
+            -d '{"speed_kmh":60,"source_address":0}' | python3 -c \
+            "import json,sys; print(json.load(sys.stdin)['frame']['candump'])")
+          echo "Uretilen: $frame"
+          test "$frame" = "18FEF100#F3003C0000FF1FFF"
+
+          echo "--- hiz enjeksiyonu ---"
+          curl -fsS -X POST http://localhost:8000/api/vehicles/man-tgx/speed \
+            -H 'Content-Type: application/json' -d '{"speed_kmh":90,"instant":true}' > /dev/null
+
+          echo "--- frontend proxy uzerinden API ---"
+          curl -fsS http://localhost:8080/api/health > /dev/null
+
+          echo "--- arayuz sayfasi ---"
+          curl -fsS http://localhost:8080/ | grep -q "J1939"
+
+      - name: WebSocket telemetri akisini dogrula
+        run: |
+          pip install --quiet websockets==14.1
+          python3 - <<'PY'
+          import asyncio, json, websockets
+
+          async def main():
+              async with websockets.connect("ws://localhost:8080/ws") as ws:
+                  snapshot = json.loads(await ws.recv())
+                  assert snapshot["type"] == "snapshot", snapshot["type"]
+                  assert len(snapshot["states"]) == 30
+                  assert snapshot["meta"]["pgn"] == 65265
+
+                  await ws.send(json.dumps(
+                      {"type": "set_speed", "vehicle_id": "volvo-fh16",
+                       "speed_kmh": 75, "instant": True}))
+
+                  for _ in range(80):
+                      message = json.loads(await ws.recv())
+                      if message.get("type") != "telemetry":
+                          continue
+                      row = next((r for r in message["t"] if r[0] == "volvo-fh16"), None)
+                      if row and abs(row[1] - 75) < 2:
+                          print(f"Telemetri dogrulandi: {row[1]} km/h, veri {row[2]}")
+                          return
+                  raise SystemExit("Beklenen telemetri gelmedi")
+
+          asyncio.run(main())
+          PY
+
+      - name: Konteyner kayitlari
+        if: failure()
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: docker compose logs --no-color
+
+      - name: Ortami kapat
+        if: always()
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: docker compose down -v

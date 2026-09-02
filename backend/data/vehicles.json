@@ -1,0 +1,156 @@
+{
+  "schema_version": "1.0",
+  "description": "J1939 telemetri simulatoru filo tanimi - 10 marka x 3 model = 30 arac",
+  "j1939": {
+    "pgn": 65265,
+    "pgn_hex": "0xFEF1",
+    "acronym": "CCVS1",
+    "name": "Cruise Control / Vehicle Speed 1",
+    "priority": 6,
+    "pdu_format": 254,
+    "pdu_specific": 241,
+    "data_page": 0,
+    "extended_data_page": 0,
+    "dlc": 8,
+    "transmit_rate_ms": 100,
+    "id_format": "29-bit Extended (CAN 2.0B)",
+    "spns": {
+      "84": {
+        "name": "Wheel-Based Vehicle Speed",
+        "start_byte": 2,
+        "length_bytes": 2,
+        "byte_order": "little-endian",
+        "resolution": 0.00390625,
+        "resolution_text": "1/256 km/h per bit",
+        "offset": 0,
+        "range_kmh": [0, 250.996],
+        "raw_max": 64255,
+        "raw_error": 65024,
+        "raw_not_available": 65535
+      },
+      "86": {
+        "name": "Cruise Control Set Speed",
+        "start_byte": 6,
+        "length_bytes": 1,
+        "resolution": 1,
+        "resolution_text": "1 km/h per bit",
+        "range_kmh": [0, 250]
+      },
+      "595": { "name": "Cruise Control Active", "start_byte": 4, "start_bit": 1, "length_bits": 2 },
+      "597": { "name": "Brake Switch", "start_byte": 4, "start_bit": 5, "length_bits": 2 },
+      "70":  { "name": "Parking Brake Switch", "start_byte": 1, "start_bit": 3, "length_bits": 2 }
+    }
+  },
+  "brands": [
+    {
+      "id": "mercedes-benz",
+      "name": "Mercedes-Benz",
+      "country": "Almanya",
+      "color": "#5ac8fa",
+      "models": [
+        { "id": "actros", "name": "Actros", "segment": "Agir Ticari", "source_address": 0,  "max_speed_kmh": 90,  "power_hp": 530 },
+        { "id": "arocs",  "name": "Arocs",  "segment": "Insaat",      "source_address": 1,  "max_speed_kmh": 85,  "power_hp": 480 },
+        { "id": "atego",  "name": "Atego",  "segment": "Dagitim",     "source_address": 2,  "max_speed_kmh": 100, "power_hp": 280 }
+      ]
+    },
+    {
+      "id": "man",
+      "name": "MAN",
+      "country": "Almanya",
+      "color": "#ff9f0a",
+      "models": [
+        { "id": "tgx", "name": "TGX", "segment": "Agir Ticari", "source_address": 3, "max_speed_kmh": 90,  "power_hp": 510 },
+        { "id": "tgs", "name": "TGS", "segment": "Insaat",      "source_address": 4, "max_speed_kmh": 85,  "power_hp": 470 },
+        { "id": "tgm", "name": "TGM", "segment": "Dagitim",     "source_address": 5, "max_speed_kmh": 100, "power_hp": 290 }
+      ]
+    },
+    {
+      "id": "volvo",
+      "name": "Volvo Trucks",
+      "country": "Isvec",
+      "color": "#30d158",
+      "models": [
+        { "id": "fh16", "name": "FH16", "segment": "Agir Ticari", "source_address": 6, "max_speed_kmh": 95, "power_hp": 750 },
+        { "id": "fm",   "name": "FM",   "segment": "Bolgesel",    "source_address": 7, "max_speed_kmh": 90, "power_hp": 460 },
+        { "id": "fmx",  "name": "FMX",  "segment": "Insaat",      "source_address": 8, "max_speed_kmh": 85, "power_hp": 500 }
+      ]
+    },
+    {
+      "id": "scania",
+      "name": "Scania",
+      "country": "Isvec",
+      "color": "#ff453a",
+      "models": [
+        { "id": "r500", "name": "R 500", "segment": "Agir Ticari", "source_address": 9,  "max_speed_kmh": 92, "power_hp": 500 },
+        { "id": "s730", "name": "S 730", "segment": "Uzun Yol",    "source_address": 10, "max_speed_kmh": 95, "power_hp": 730 },
+        { "id": "g410", "name": "G 410", "segment": "Bolgesel",    "source_address": 11, "max_speed_kmh": 90, "power_hp": 410 }
+      ]
+    },
+    {
+      "id": "daf",
+      "name": "DAF",
+      "country": "Hollanda",
+      "color": "#64d2ff",
+      "models": [
+        { "id": "xf", "name": "XF", "segment": "Agir Ticari", "source_address": 12, "max_speed_kmh": 90,  "power_hp": 480 },
+        { "id": "cf", "name": "CF", "segment": "Bolgesel",    "source_address": 13, "max_speed_kmh": 90,  "power_hp": 430 },
+        { "id": "lf", "name": "LF", "segment": "Dagitim",     "source_address": 14, "max_speed_kmh": 100, "power_hp": 260 }
+      ]
+    },
+    {
+      "id": "iveco",
+      "name": "Iveco",
+      "country": "Italya",
+      "color": "#bf5af2",
+      "models": [
+        { "id": "s-way",      "name": "S-Way",      "segment": "Agir Ticari", "source_address": 15, "max_speed_kmh": 90,  "power_hp": 510 },
+        { "id": "eurocargo",  "name": "Eurocargo",  "segment": "Dagitim",     "source_address": 16, "max_speed_kmh": 100, "power_hp": 280 },
+        { "id": "trakker",    "name": "Trakker",    "segment": "Insaat",      "source_address": 17, "max_speed_kmh": 85,  "power_hp": 450 }
+      ]
+    },
+    {
+      "id": "renault-trucks",
+      "name": "Renault Trucks",
+      "country": "Fransa",
+      "color": "#ffd60a",
+      "models": [
+        { "id": "t-high", "name": "T High", "segment": "Uzun Yol", "source_address": 18, "max_speed_kmh": 92, "power_hp": 520 },
+        { "id": "c",      "name": "C",      "segment": "Insaat",   "source_address": 19, "max_speed_kmh": 85, "power_hp": 480 },
+        { "id": "k",      "name": "K",      "segment": "Arazi",    "source_address": 20, "max_speed_kmh": 80, "power_hp": 440 }
+      ]
+    },
+    {
+      "id": "ford-trucks",
+      "name": "Ford Trucks",
+      "country": "Turkiye",
+      "color": "#0a84ff",
+      "models": [
+        { "id": "f-max",  "name": "F-MAX",  "segment": "Uzun Yol",    "source_address": 21, "max_speed_kmh": 90,  "power_hp": 500 },
+        { "id": "1848t",  "name": "1848T",  "segment": "Agir Ticari", "source_address": 22, "max_speed_kmh": 90,  "power_hp": 480 },
+        { "id": "3543m",  "name": "3543M",  "segment": "Insaat",      "source_address": 23, "max_speed_kmh": 80,  "power_hp": 430 }
+      ]
+    },
+    {
+      "id": "bmc",
+      "name": "BMC",
+      "country": "Turkiye",
+      "color": "#ff375f",
+      "models": [
+        { "id": "tugra",    "name": "Tugra",    "segment": "Uzun Yol", "source_address": 24, "max_speed_kmh": 90,  "power_hp": 480 },
+        { "id": "pro-935",  "name": "Pro 935",  "segment": "Dagitim",  "source_address": 25, "max_speed_kmh": 100, "power_hp": 300 },
+        { "id": "levend",   "name": "Levend",   "segment": "Hafif",    "source_address": 26, "max_speed_kmh": 120, "power_hp": 150 }
+      ]
+    },
+    {
+      "id": "isuzu",
+      "name": "Isuzu",
+      "country": "Japonya",
+      "color": "#a2845e",
+      "models": [
+        { "id": "giga",     "name": "Giga",     "segment": "Agir Ticari", "source_address": 27, "max_speed_kmh": 90,  "power_hp": 420 },
+        { "id": "forward",  "name": "Forward",  "segment": "Dagitim",     "source_address": 28, "max_speed_kmh": 100, "power_hp": 240 },
+        { "id": "npr",      "name": "NPR",      "segment": "Hafif",       "source_address": 29, "max_speed_kmh": 120, "power_hp": 155 }
+      ]
+    }
+  ]
+}
