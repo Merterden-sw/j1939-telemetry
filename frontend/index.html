@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>J1939 Telemetri Kontrol Paneli</title>
-  <meta name="description" content="PGN 65265 / SPN 84 tabanli arac hizi simulasyonu ve canli CAN izleme paneli" />
+  <meta name="description" content="CCVS1 / EEC2 / ETC2 / EBC1 / HVBATT mesajlarini ureten arac telemetri simulasyon paneli" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🚚</text></svg>" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
@@ -18,7 +18,7 @@
       <span class="topbar__logo">J1939</span>
       <div>
         <h1>Telemetri Kontrol Paneli</h1>
-        <p class="topbar__sub">PGN 65265 &middot; CCVS1 &middot; SPN 84 Wheel-Based Vehicle Speed</p>
+        <p class="topbar__sub">CCVS1 &middot; EEC2 &middot; ETC2 &middot; EBC1 &middot; HVBATT</p>
       </div>
     </div>
 
@@ -46,7 +46,7 @@
           <h2>Filo <span class="badge" id="fleet-count">30 arac</span></h2>
           <div class="panel__tools">
             <input type="search" id="search" class="input input--search"
-                   placeholder="Marka veya model ara…" aria-label="Arac ara" />
+                   placeholder="Marka, model veya tip ara…" aria-label="Arac ara" />
             <select id="brand-filter" class="input" aria-label="Marka filtresi">
               <option value="">Tum markalar</option>
             </select>
@@ -76,8 +76,13 @@
                 <th>CAN ID</th>
                 <th class="num">Hiz</th>
                 <th class="bar-col">Gosterge</th>
+                <th class="num">Gaz %</th>
+                <th class="num">Fren %</th>
+                <th class="num">Vites</th>
+                <th class="num">Devir</th>
+                <th class="num">SOC</th>
                 <th class="num">SPN 84 Ham</th>
-                <th>Veri Alani (HEX)</th>
+                <th>CCVS1 Veri Alani</th>
                 <th class="num">TX</th>
               </tr>
             </thead>
@@ -89,13 +94,13 @@
     </div>
 
     <!-- =================================================================== -->
-    <!-- Sag sutun: hiz enjektoru + CAN bus log                               -->
+    <!-- Sag sutun: sinyal enjektoru + CAN bus log                            -->
     <!-- =================================================================== -->
     <aside class="column column--side">
 
       <section class="panel panel--control">
         <div class="panel__head">
-          <h2>Hiz Enjektoru</h2>
+          <h2>Sinyal Enjektoru</h2>
           <span class="badge badge--mono" id="selected-canid">--</span>
         </div>
 
@@ -105,15 +110,18 @@
           <div class="control" id="control-form" hidden>
 
             <div class="control__identity">
+              <div class="control__art" id="sel-art"></div>
               <span class="control__brand" id="sel-brand">—</span>
               <h3 id="sel-model">—</h3>
               <p class="control__meta">
                 <span id="sel-segment">—</span> &middot;
                 <span id="sel-power">—</span> HP &middot;
+                <span id="sel-powertrain">—</span> &middot;
                 SA <span id="sel-sa" class="mono">—</span>
               </p>
             </div>
 
+            <!-- Hiz gostergesi ve dijital okumalar -->
             <div class="gauge">
               <svg viewBox="0 0 200 120" class="gauge__svg" aria-hidden="true">
                 <path class="gauge__track" d="M20 110 A 80 80 0 0 1 180 110" />
@@ -126,8 +134,39 @@
               <p class="gauge__target">Hedef: <span id="gauge-target">0</span> km/h</p>
             </div>
 
+            <div class="readouts">
+              <div class="readout readout--gear">
+                <span class="readout__label">Vites</span>
+                <span class="readout__value" id="readout-gear">N</span>
+              </div>
+              <div class="readout">
+                <span class="readout__label">Devir</span>
+                <span class="readout__value" id="readout-rpm">0</span>
+                <span class="readout__unit">rpm</span>
+              </div>
+              <div class="readout">
+                <span class="readout__label">Motor Yuku</span>
+                <span class="readout__value" id="readout-load">0%</span>
+              </div>
+            </div>
+
+            <!-- Batarya durumu -->
+            <div class="battery">
+              <div class="battery__row">
+                <span class="battery__label">SOC <i>SPN 5464</i></span>
+                <span class="battery__track"><span class="battery__fill" id="batt-soc-fill" data-level="ok"></span></span>
+                <span class="battery__value" id="batt-soc-value">—</span>
+              </div>
+              <div class="battery__row">
+                <span class="battery__label">SOH <i>SPN 5465</i></span>
+                <span class="battery__track"><span class="battery__fill battery__fill--soh" id="batt-soh-fill"></span></span>
+                <span class="battery__value" id="batt-soh-value">—</span>
+              </div>
+            </div>
+
+            <!-- Hiz enjeksiyonu -->
             <label class="field" for="speed-slider">
-              <span class="field__label">Hiz Enjeksiyonu (SPN 84)</span>
+              <span class="field__label">Hiz Enjeksiyonu <i>SPN 84</i></span>
               <input type="range" id="speed-slider" min="0" max="180" step="1" value="0" class="slider" />
             </label>
 
@@ -140,7 +179,7 @@
                       title="Ivme rampasini atlayarak dogrudan uygula">Anlik</button>
             </div>
 
-            <div class="presets" id="presets">
+            <div class="presets">
               <button class="btn btn--chip" data-speed="0">0</button>
               <button class="btn btn--chip" data-speed="30">30</button>
               <button class="btn btn--chip" data-speed="50">50</button>
@@ -150,12 +189,62 @@
               <button class="btn btn--chip" data-speed="180">180</button>
             </div>
 
+            <!-- Gaz pedali -->
+            <label class="field" for="accel-slider">
+              <span class="field__label">
+                Gaz Pedali <i>SPN 91 / EEC2</i>
+                <b class="field__value" id="accel-value">0%</b>
+              </span>
+              <input type="range" id="accel-slider" min="0" max="100" step="1" value="0"
+                     class="slider slider--accel" />
+            </label>
+
+            <!-- Fren pedali -->
+            <label class="field" for="brake-slider">
+              <span class="field__label">
+                Fren Pedali <i>SPN 521 / EBC1</i>
+                <b class="field__value" id="brake-value">0%</b>
+              </span>
+              <input type="range" id="brake-slider" min="0" max="100" step="1" value="0"
+                     class="slider slider--brake" />
+            </label>
+            <div class="presets">
+              <button class="btn btn--chip btn--danger" id="brake-stomp">Tam Fren</button>
+              <button class="btn btn--chip" id="brake-release">Birak</button>
+            </div>
+
+            <!-- Vites -->
+            <label class="field" for="gear-select">
+              <span class="field__label">Vites <i>SPN 523 / 162 / 163</i></span>
+              <select id="gear-select" class="input input--full"></select>
+            </label>
+
+            <!-- Batarya enjeksiyonu -->
+            <label class="field" for="soc-slider">
+              <span class="field__label">Batarya Doluluk (SOC) <i>SPN 5464</i></span>
+              <input type="range" id="soc-slider" min="0" max="100" step="1" value="80"
+                     class="slider slider--soc" />
+            </label>
+            <label class="field" for="soh-slider">
+              <span class="field__label">Batarya Sagligi (SOH) <i>SPN 5465</i></span>
+              <input type="range" id="soh-slider" min="0" max="100" step="1" value="98"
+                     class="slider slider--soh" />
+            </label>
+
+            <!-- Anahtarlar -->
             <div class="toggles">
-              <button class="toggle is-danger" id="tg-brake"><span class="toggle__led"></span>Fren (SPN 597)</button>
               <button class="toggle is-danger" id="tg-parking"><span class="toggle__led"></span>El Freni (SPN 70)</button>
               <button class="toggle" id="tg-cruise"><span class="toggle__led"></span>Cruise (SPN 595/86)</button>
               <button class="toggle" id="tg-online"><span class="toggle__led"></span>ECU Cevrimici</button>
+              <button class="toggle" id="tg-audio">
+                <span class="toggle__led"></span><span class="toggle__text">Motor Sesi Kapali</span>
+              </button>
             </div>
+
+            <label class="field field--inline" for="audio-volume">
+              <span class="field__label">Ses Seviyesi</span>
+              <input type="range" id="audio-volume" min="0" max="100" step="1" value="60" class="slider slider--volume" />
+            </label>
 
             <div class="modes" role="group" aria-label="Surus modu">
               <button class="btn btn--mode" data-mode="manual">Manuel</button>
@@ -163,10 +252,10 @@
               <button class="btn btn--mode" data-mode="idle">Rolanti</button>
             </div>
 
+            <!-- Uretilen cerceveler -->
             <div class="frame-view">
-              <span class="frame-view__label">Uretilen CAN Frame</span>
-              <code class="frame-view__value mono" id="frame-current">--</code>
-              <div class="frame-bytes mono" id="frame-bytes"></div>
+              <span class="frame-view__label">Uretilen CAN Frame'leri</span>
+              <div class="frame-list" id="frame-list"></div>
             </div>
 
           </div>
@@ -190,12 +279,14 @@
   </main>
 
   <footer class="footer">
-    <span>SAE J1939-21 / J1939-71 &middot; CCVS1 100 ms periyot</span>
+    <span id="footer-messages">SAE J1939-21 / J1939-71</span>
     <span id="footer-endpoint" class="mono">—</span>
   </footer>
 
   <script src="js/api.js"></script>
   <script src="js/socket.js"></script>
+  <script src="js/vehicle-art.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -178,17 +178,51 @@ jobs:
             "import json,sys; print(len(json.load(sys.stdin)['states']))")
           test "$count" = "30"
 
-          echo "--- SPN 84 kodlamasi: 60 km/h -> 18FEF100#F3003C0000FF1FFF ---"
-          frame=$(curl -fsS -X POST http://localhost:8000/api/j1939/encode \
-            -H 'Content-Type: application/json' \
-            -d '{"speed_kmh":60,"source_address":0}' | python3 -c \
-            "import json,sys; print(json.load(sys.stdin)['frame']['candump'])")
-          echo "Uretilen: $frame"
+          echo "--- 5 mesaj tanimli olmali ---"
+          curl -fsS http://localhost:8000/api/j1939/messages | python3 -c "
+          import json,sys
+          m = {x['acronym']: (x['pgn'], x['pgn_hex']) for x in json.load(sys.stdin)['messages']}
+          beklenen = {'CCVS1': (65265, '0xFEF1'), 'EEC2': (61443, '0xF003'),
+                      'ETC2': (61445, '0xF005'), 'EBC1': (61441, '0xF001'),
+                      'HVBATT': (64923, '0xFD9B')}
+          assert m == beklenen, m
+          print('  PGN katalogu dogru:', ', '.join(m))"
+
+          encode() {
+            curl -fsS -X POST http://localhost:8000/api/j1939/encode \
+              -H 'Content-Type: application/json' -d "$1" | python3 -c \
+              "import json,sys; print(json.load(sys.stdin)['frame']['candump'])"
+          }
+
+          echo "--- SPN 84 (CCVS1): 60 km/h ---"
+          frame=$(encode '{"pgn":65265,"source_address":0,"signals":{"speed_kmh":60}}')
+          echo "  $frame"
           test "$frame" = "18FEF100#F3003C0000FF1FFF"
 
-          echo "--- hiz enjeksiyonu ---"
+          echo "--- SPN 91 (EEC2): gaz %50 ---"
+          frame=$(encode '{"pgn":61443,"source_address":0,"signals":{"accel_pedal_pct":50}}')
+          echo "  $frame"
+          case "$frame" in 0CF00300#*7D*) ;; *) echo "::error::EEC2 beklenmedik: $frame"; exit 1;; esac
+
+          echo "--- SPN 523 (ETC2): 8. vites, D ---"
+          frame=$(encode '{"pgn":61445,"source_address":0,"signals":{"current_gear":8,"selected_gear":8,"current_range":"D","requested_range":"D"}}')
+          echo "  $frame"
+          case "$frame" in 0CF00500#85*4420) ;; *) echo "::error::ETC2 beklenmedik: $frame"; exit 1;; esac
+
+          echo "--- SPN 5464/5465 (HVBATT): SOC %78, SOH %96 ---"
+          frame=$(encode '{"pgn":64923,"source_address":0,"signals":{"soc_pct":78,"soh_pct":96}}')
+          echo "  $frame"
+          test "$frame" = "18FD9B00#C3F0FFFFFFFFFFFF"
+
+          echo "--- sinyal enjeksiyonu ---"
           curl -fsS -X POST http://localhost:8000/api/vehicles/man-tgx/speed \
             -H 'Content-Type: application/json' -d '{"speed_kmh":90,"instant":true}' > /dev/null
+          curl -fsS -X POST http://localhost:8000/api/vehicles/man-tgx/accelerator \
+            -H 'Content-Type: application/json' -d '{"pedal_pct":65}' > /dev/null
+          curl -fsS -X POST http://localhost:8000/api/vehicles/man-tgx/gear-range \
+            -H 'Content-Type: application/json' -d '{"gear_range":"D"}' > /dev/null
+          curl -fsS -X POST http://localhost:8000/api/vehicles/volvo-fm/battery \
+            -H 'Content-Type: application/json' -d '{"soc_pct":62,"soh_pct":93}' > /dev/null
 
           echo "--- frontend proxy uzerinden API ---"
           curl -fsS http://localhost:8080/api/health > /dev/null
@@ -207,21 +241,32 @@ jobs:
                   snapshot = json.loads(await ws.recv())
                   assert snapshot["type"] == "snapshot", snapshot["type"]
                   assert len(snapshot["states"]) == 30
-                  assert snapshot["meta"]["pgn"] == 65265
+                  assert len(snapshot["meta"]["messages"]) == 5
 
+                  await ws.send(json.dumps(
+                      {"type": "subscribe", "vehicle_ids": ["volvo-fh16"]}))
                   await ws.send(json.dumps(
                       {"type": "set_speed", "vehicle_id": "volvo-fh16",
                        "speed_kmh": 75, "instant": True}))
 
-                  for _ in range(80):
+                  hiz_ok = False
+                  gorulen = set()
+                  for _ in range(400):
                       message = json.loads(await ws.recv())
                       if message.get("type") != "telemetry":
                           continue
+                      for frame in message.get("frames", []):
+                          gorulen.add(frame["acronym"])
                       row = next((r for r in message["t"] if r[0] == "volvo-fh16"), None)
                       if row and abs(row[1] - 75) < 2:
-                          print(f"Telemetri dogrulandi: {row[1]} km/h, veri {row[2]}")
+                          hiz_ok = True
+                      if hiz_ok and len(gorulen) == 5:
+                          print(f"Telemetri dogrulandi: {row[1]} km/h, "
+                                f"vites {row[4]}{row[5]}, SOC %{row[7]}")
+                          print(f"Gelen PGN'ler: {', '.join(sorted(gorulen))}")
                           return
-                  raise SystemExit("Beklenen telemetri gelmedi")
+                  raise SystemExit(
+                      f"Eksik telemetri (hiz={hiz_ok}, PGN'ler={sorted(gorulen)})")
 
           asyncio.run(main())
           PY

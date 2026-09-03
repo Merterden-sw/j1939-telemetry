@@ -10,6 +10,8 @@ ignore = [
 
 [lint.per-file-ignores]
 "tests/*" = ["SIM117", "SIM300"]
+# Paket cephesi: core ve messages modullerini tek noktadan disa aktarir.
+"app/j1939/__init__.py" = ["F401"]
 
 [format]
 quote-style = "double"

@@ -1,7 +1,7 @@
 """
 J1939 Telemetri Servisi - FastAPI uygulamasi.
 
-  REST : filo tanimi, arac durumu, hiz enjeksiyonu, cerceve kodlama/cozme
+  REST : filo tanimi, arac durumu, sinyal enjeksiyonu, cerceve kodlama/cozme
   WS   : /ws uzerinden gercek zamanli telemetri yayini ve komut kanali
 """
 
@@ -19,19 +19,24 @@ from .config import settings
 from .fleet import load_fleet
 from .hub import ClientConnection, Hub
 from .j1939 import (
-    CCVS1_DLC,
+    DLC,
+    MESSAGES,
     PGN_CCVS1,
     J1939Error,
-    build_ccvs1_frame,
+    build_frame,
     decode_can_id,
-    parse_ccvs1_data,
+    parse_frame,
 )
 from .models import (
+    BatteryCommand,
     CruiseCommand,
     DecodeRequest,
     EncodeRequest,
     FleetCommand,
+    GearCommand,
+    GearRangeCommand,
     ModeCommand,
+    PedalCommand,
     SpeedCommand,
     ToggleCommand,
 )
@@ -52,17 +57,49 @@ hub = Hub()
 _tick_seq = 0
 
 
+def _compact_rows(vehicle_ids: set[str]) -> list[list]:
+    """
+    Filo geneli icin sikistirilmis telemetri satirlari.
+
+    Alan sirasi arayuzdeki cozucuyle ayni olmalidir:
+        [id, hiz, gaz%, fren%, vites, kademe, rpm, soc%, soh%, ccvs1_hex, tx]
+    """
+    rows: list[list] = []
+    for vehicle_id in vehicle_ids:
+        state = simulator.states[vehicle_id]
+        ccvs1 = state.last_frames.get(PGN_CCVS1) or {}
+        rows.append(
+            [
+                vehicle_id,
+                round(state.speed_kmh, 2),
+                round(state.accel_pedal_pct, 1),
+                round(state.brake_pedal_pct, 1),
+                state.gear,
+                state.gear_range,
+                round(state.engine_rpm),
+                round(state.soc_pct, 1),
+                round(state.soh_pct, 1),
+                ccvs1.get("data_hex", ""),
+                state.tx_counter,
+            ]
+        )
+    return rows
+
+
 async def _broadcast_frames(frames: list[dict]) -> None:
     """
     Simulator geri cagirmasi: her tick'te tum istemcilere telemetri gonderir.
 
-    Bant genisligini dusuk tutmak icin filo geneli sikistirilmis bir dizi olarak
-    ("t" alani), yalnizca abone olunan araclar icin tam cerceve detayi gonderilir.
+    Bant genisligini dusuk tutmak icin filo geneli sikistirilmis satirlar
+    ("t" alani) olarak, yalnizca abone olunan araclarin tam cerceveleri
+    ("frames") gonderilir.
     """
     global _tick_seq
     _tick_seq += 1
 
-    compact = [[f["vehicle_id"], f["speed_kmh"], f["data_hex"], f["tx_counter"]] for f in frames]
+    transmitting = {f["vehicle_id"] for f in frames}
+    compact = _compact_rows(transmitting)
+
     # Saniyede bir tum istemcilere durum senkronu gonderilir; boylece bir
     # istemcinin verdigi komut (veya filo komutu) digerlerinde de gorunur.
     sync = _tick_seq % STATS_EVERY_N_TICKS == 0
@@ -90,7 +127,12 @@ async def _broadcast_frames(frames: list[dict]) -> None:
 async def lifespan(app: FastAPI):
     simulator.on_frames(_broadcast_frames)
     await simulator.start()
-    logger.info("API hazir | %d arac | PGN %d (CCVS1)", len(fleet), PGN_CCVS1)
+    logger.info(
+        "API hazir | %d arac | %d mesaj: %s",
+        len(fleet),
+        len(MESSAGES),
+        ", ".join(m.acronym for m in MESSAGES.values()),
+    )
     try:
         yield
     finally:
@@ -100,8 +142,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="J1939 Telemetri Simulatoru",
-    description="PGN 65265 (CCVS1) / SPN 84 tabanli arac hizi simulasyon ve yayin servisi",
-    version="1.0.0",
+    description=(
+        "CCVS1 / EEC2 / ETC2 / EBC1 / HVBATT mesajlarini ureten arac telemetri "
+        "simulasyon ve yayin servisi"
+    ),
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -142,6 +187,7 @@ async def health() -> dict:
         "status": "ok",
         "simulator_running": simulator.running,
         "vehicles": len(fleet),
+        "messages": len(MESSAGES),
         "clients": hub.client_count,
         "tick_ms": settings.tick_ms,
     }
@@ -149,14 +195,8 @@ async def health() -> dict:
 
 @app.get("/api/meta", tags=["servis"])
 async def meta() -> dict:
-    """J1939 mesaj tanimi ve arayuz sinirlari."""
-    return {
-        **fleet.meta,
-        "tick_ms": settings.tick_ms,
-        "min_speed_kmh": settings.min_speed_kmh,
-        "max_speed_kmh": settings.max_speed_kmh,
-        "vehicle_count": len(fleet),
-    }
+    """J1939 mesaj tanimlari ve arayuz sinirlari."""
+    return simulator.meta()
 
 
 @app.get("/api/stats", tags=["servis"])
@@ -177,7 +217,7 @@ async def get_vehicle(vehicle_id: str) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# Komutlar
+# Sinyal enjeksiyonu
 # --------------------------------------------------------------------------- #
 
 
@@ -185,12 +225,48 @@ async def get_vehicle(vehicle_id: str) -> dict:
 async def set_speed(
     vehicle_id: str, body: SpeedCommand, vehicle=Depends(get_vehicle_or_404)
 ) -> dict:
-    """Secili araca anlik hiz basar (speed injection)."""
+    """Secili araca anlik hiz basar (SPN 84)."""
     state = simulator.set_speed(vehicle_id, body.speed_kmh, instant=body.instant)
-    preview = build_ccvs1_frame(
-        body.speed_kmh, source_address=vehicle.source_address, timestamp=time.time()
+    preview = build_frame(
+        PGN_CCVS1, {"speed_kmh": body.speed_kmh}, vehicle.source_address, timestamp=time.time()
     )
     return {"state": state, "frame_preview": preview.to_dict()}
+
+
+@app.post("/api/vehicles/{vehicle_id}/accelerator", tags=["komut"])
+async def set_accelerator(
+    vehicle_id: str, body: PedalCommand, _=Depends(get_vehicle_or_404)
+) -> dict:
+    """Gaz pedali konumu (SPN 91 / EEC2)."""
+    return {"state": simulator.set_accelerator(vehicle_id, body.pedal_pct)}
+
+
+@app.post("/api/vehicles/{vehicle_id}/brake-pedal", tags=["komut"])
+async def set_brake_pedal(
+    vehicle_id: str, body: PedalCommand, _=Depends(get_vehicle_or_404)
+) -> dict:
+    """Fren pedali konumu (SPN 521 / EBC1)."""
+    return {"state": simulator.set_brake_pedal(vehicle_id, body.pedal_pct)}
+
+
+@app.post("/api/vehicles/{vehicle_id}/gear-range", tags=["komut"])
+async def set_gear_range(
+    vehicle_id: str, body: GearRangeCommand, _=Depends(get_vehicle_or_404)
+) -> dict:
+    """Vites kademesi P / R / N / D (SPN 162 / 163)."""
+    return {"state": simulator.set_gear_range(vehicle_id, body.gear_range)}
+
+
+@app.post("/api/vehicles/{vehicle_id}/gear", tags=["komut"])
+async def set_gear(vehicle_id: str, body: GearCommand, _=Depends(get_vehicle_or_404)) -> dict:
+    """Vitesi elle sabitler (SPN 523 / 524)."""
+    return {"state": simulator.set_gear(vehicle_id, body.gear)}
+
+
+@app.post("/api/vehicles/{vehicle_id}/battery", tags=["komut"])
+async def set_battery(vehicle_id: str, body: BatteryCommand, _=Depends(get_vehicle_or_404)) -> dict:
+    """Batarya SOC (SPN 5464) ve SOH (SPN 5465)."""
+    return {"state": simulator.set_battery(vehicle_id, body.soc_pct, body.soh_pct)}
 
 
 @app.post("/api/vehicles/{vehicle_id}/mode", tags=["komut"])
@@ -205,6 +281,7 @@ async def set_online(vehicle_id: str, body: ToggleCommand, _=Depends(get_vehicle
 
 @app.post("/api/vehicles/{vehicle_id}/brake", tags=["komut"])
 async def set_brake(vehicle_id: str, body: ToggleCommand, _=Depends(get_vehicle_or_404)) -> dict:
+    """Fren anahtarini ac/kapa (SPN 597)."""
     return {"state": simulator.set_brake(vehicle_id, body.value)}
 
 
@@ -231,25 +308,41 @@ async def fleet_command(body: FleetCommand) -> dict:
 # --------------------------------------------------------------------------- #
 
 
+@app.get("/api/j1939/messages", tags=["j1939"])
+async def list_messages() -> dict:
+    """Desteklenen PGN'ler, oncelikleri, yayin periyotlari ve SPN listeleri."""
+    return {"messages": [m.to_dict() for m in MESSAGES.values()]}
+
+
 @app.post("/api/j1939/encode", tags=["j1939"])
 async def encode_frame(body: EncodeRequest) -> dict:
-    """Durum degistirmeden verilen hiz icin CCVS1 cercevesi uretir."""
-    frame = build_ccvs1_frame(
-        body.speed_kmh,
-        source_address=body.source_address,
+    """Durum degistirmeden verilen sinyaller icin cerceve uretir."""
+    if body.pgn not in MESSAGES:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Desteklenmeyen PGN: {body.pgn} "
+                f"(gecerli: {', '.join(str(p) for p in MESSAGES)})"
+            ),
+        )
+    frame = build_frame(
+        body.pgn,
+        body.signals,
+        body.source_address,
         priority=body.priority,
         timestamp=time.time(),
     )
-    return {"frame": frame.to_dict(), "decoded": parse_ccvs1_data(frame.data)}
+    return {"frame": frame.to_dict(), "decoded": parse_frame(body.pgn, frame.data)}
 
 
 @app.post("/api/j1939/decode", tags=["j1939"])
 async def decode_frame(body: DecodeRequest) -> dict:
-    """candump bicimindeki bir cerceveyi (ID#DATA) coozumler."""
+    """candump bicimindeki bir cerceveyi (ID#DATA) cozumler."""
     text = body.frame.strip().replace(" ", "")
     if "#" not in text:
         raise HTTPException(
-            status_code=400, detail="Bicim 'ID#DATA' olmali, ornek: 18FEF100#F3003C0000FF1FFF"
+            status_code=400,
+            detail="Bicim 'ID#DATA' olmali, ornek: 18FEF100#F3003C0000FF1FFF",
         )
 
     id_part, data_part = text.split("#", 1)
@@ -259,14 +352,21 @@ async def decode_frame(body: DecodeRequest) -> dict:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"Gecersiz hex: {exc}") from exc
 
-    if len(data) != CCVS1_DLC:
-        raise HTTPException(status_code=400, detail=f"Veri alani {CCVS1_DLC} byte olmali")
+    if len(data) != DLC:
+        raise HTTPException(status_code=400, detail=f"Veri alani {DLC} byte olmali")
 
     header = decode_can_id(can_id)
+    message = MESSAGES.get(header["pgn"])
+    if message is None:
+        raise HTTPException(
+            status_code=400, detail=f"Tanimsiz PGN: {header['pgn']} ({header['pgn_hex']})"
+        )
+
     vehicle = fleet.by_source_address(header["source_address"])
     return {
         "header": header,
-        "signals": parse_ccvs1_data(data),
+        "message": message.to_dict(),
+        "signals": message.parser(data),
         "vehicle": vehicle.to_dict() if vehicle else None,
     }
 
@@ -299,6 +399,17 @@ async def _handle_ws_command(client: ClientConnection, message: dict) -> dict:
     handlers = {
         "set_speed": lambda: simulator.set_speed(
             vehicle_id, float(message["speed_kmh"]), instant=bool(message.get("instant", False))
+        ),
+        "set_accelerator": lambda: simulator.set_accelerator(
+            vehicle_id, float(message["pedal_pct"])
+        ),
+        "set_brake_pedal": lambda: simulator.set_brake_pedal(
+            vehicle_id, float(message["pedal_pct"])
+        ),
+        "set_gear_range": lambda: simulator.set_gear_range(vehicle_id, message["gear_range"]),
+        "set_gear": lambda: simulator.set_gear(vehicle_id, int(message["gear"])),
+        "set_battery": lambda: simulator.set_battery(
+            vehicle_id, message.get("soc_pct"), message.get("soh_pct")
         ),
         "set_mode": lambda: simulator.set_mode(vehicle_id, message["mode"]),
         "set_online": lambda: simulator.set_online(vehicle_id, bool(message["value"])),

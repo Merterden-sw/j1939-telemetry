@@ -1,0 +1,79 @@
+"""
+J1939 protokol katmani.
+
+    core     : 29-bit tanimlayici, bit paketleme, SPN olcekleme, cerceve nesnesi
+    messages : PGN bazli mesaj tanimlari ve kayit defteri
+"""
+
+from .core import (
+    BIT2_ERROR,
+    BIT2_NOT_AVAILABLE,
+    BIT2_OFF,
+    BIT2_ON,
+    BYTE_NOT_AVAILABLE,
+    DEFAULT_PRIORITY,
+    GLOBAL_ADDRESS,
+    PDU1_MAX_PF,
+    WORD_NOT_AVAILABLE,
+    J1939Error,
+    J1939Frame,
+    build_can_id,
+    decode_can_id,
+    decode_scaled,
+    encode_scaled,
+    format_can_id,
+    pack_2bit,
+    unpack_2bit,
+)
+from .messages import (
+    DLC,
+    GEAR_OFFSET,
+    MESSAGES,
+    PERCENT_RESOLUTION,
+    PGN_CCVS1,
+    PGN_EBC1,
+    PGN_EEC2,
+    PGN_ETC2,
+    PGN_HVBATT,
+    SPN84_MAX_KMH,
+    SPN84_RESOLUTION,
+    MessageDef,
+    build_ccvs1,
+    build_ccvs1_frame,
+    build_ebc1,
+    build_eec2,
+    build_etc2,
+    build_frame,
+    build_hvbatt,
+    decode_gear,
+    decode_percent,
+    decode_range,
+    encode_gear,
+    encode_percent,
+    encode_range,
+    parse_ccvs1,
+    parse_ebc1,
+    parse_eec2,
+    parse_etc2,
+    parse_frame,
+    parse_hvbatt,
+)
+
+# Geriye donuk adlar (eski j1939.py API'si)
+CCVS1_DLC = DLC
+
+
+def encode_wheel_speed(speed_kmh: float | None) -> int:
+    """SPN 84: km/h -> ham deger (1/256 km/h per bit)."""
+    return encode_scaled(speed_kmh, resolution=SPN84_RESOLUTION, byte_length=2)
+
+
+def decode_wheel_speed(raw: int) -> float | None:
+    """SPN 84: ham deger -> km/h."""
+    return decode_scaled(raw, resolution=SPN84_RESOLUTION, byte_length=2)
+
+
+def wheel_speed_bytes(speed_kmh: float | None) -> tuple[int, int]:
+    """SPN 84 icin (dusuk byte, yuksek byte) - little-endian."""
+    raw = encode_wheel_speed(speed_kmh)
+    return raw & 0xFF, (raw >> 8) & 0xFF
