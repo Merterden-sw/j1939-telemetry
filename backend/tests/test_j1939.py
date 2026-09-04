@@ -5,6 +5,7 @@ import pytest
 from app.j1939 import (
     MESSAGES,
     PGN_CCVS1,
+    PGN_DM1,
     PGN_EBC1,
     PGN_EEC2,
     PGN_ETC2,
@@ -14,11 +15,15 @@ from app.j1939 import (
     build_can_id,
     build_ccvs1,
     build_ccvs1_frame,
+    build_dm1,
     build_ebc1,
     build_eec2,
     build_etc2,
     build_frame,
+    build_hours,
     build_hvbatt,
+    build_vdhr,
+    build_vep1,
     decode_can_id,
     decode_gear,
     decode_percent,
@@ -30,11 +35,15 @@ from app.j1939 import (
     encode_wheel_speed,
     pack_2bit,
     parse_ccvs1,
+    parse_dm1,
     parse_ebc1,
     parse_eec2,
     parse_etc2,
     parse_frame,
+    parse_hours,
     parse_hvbatt,
+    parse_vdhr,
+    parse_vep1,
     unpack_2bit,
     wheel_speed_bytes,
 )
@@ -276,9 +285,19 @@ class TestHvBattery:
 
 
 class TestRegistry:
-    def test_five_messages_registered(self):
-        assert len(MESSAGES) == 5
-        assert {m.acronym for m in MESSAGES.values()} == {"CCVS1", "EEC2", "ETC2", "EBC1", "HVBATT"}
+    def test_nine_messages_registered(self):
+        assert len(MESSAGES) == 9
+        assert {m.acronym for m in MESSAGES.values()} == {
+            "CCVS1",
+            "EEC2",
+            "ETC2",
+            "EBC1",
+            "HVBATT",
+            "DM1",
+            "VEP1",
+            "HOURS",
+            "VDHR",
+        }
 
     @pytest.mark.parametrize("pgn", list(MESSAGES))
     def test_every_message_builds_eight_bytes(self, pgn):
@@ -287,6 +306,63 @@ class TestRegistry:
         assert frame.to_dict()["dlc"] == 8
         assert len(frame.data_hex) == 16
 
+
+class TestDm1:
+    def test_no_fault_is_clear(self):
+        decoded = parse_dm1(build_dm1({}))
+        assert decoded["mil_lamp_on"] is False
+        assert decoded["spn"] is None
+
+    def test_fault_roundtrip(self):
+        data = build_dm1({"dtc_spn": 110, "dtc_fmi": 0, "dtc_occurrence_count": 3})
+        decoded = parse_dm1(data)
+        assert decoded["mil_lamp_on"] is True
+        assert decoded["spn"] == 110
+        assert decoded["fmi"] == 0
+        assert decoded["occurrence_count"] == 3
+        assert decoded["spn_name"] == "Motor Sogutma Suyu Sicakligi"
+
+    def test_frame_can_id_uses_dm1_pgn(self):
+        frame = build_frame(PGN_DM1, {"dtc_spn": 110, "dtc_fmi": 0}, source_address=0x00)
+        assert frame.can_id_hex == "18FECA00"
+
+    def test_invalid_fmi_rejected(self):
+        with pytest.raises(J1939Error):
+            build_dm1({"dtc_spn": 110, "dtc_fmi": 99})
+
+
+class TestVep1:
+    @pytest.mark.parametrize("lat,lon", [(0.0, 0.0), (41.0082, 28.9784), (-33.8688, 151.2093)])
+    def test_roundtrip_within_resolution(self, lat, lon):
+        data = build_vep1({"latitude_deg": lat, "longitude_deg": lon})
+        decoded = parse_vep1(data)
+        assert decoded["spn_584_latitude_deg"] == pytest.approx(lat, abs=1e-6)
+        assert decoded["spn_585_longitude_deg"] == pytest.approx(lon, abs=1e-6)
+
+    def test_not_available(self):
+        decoded = parse_vep1(build_vep1({}))
+        assert decoded["spn_584_latitude_deg"] is None
+        assert decoded["spn_585_longitude_deg"] is None
+
+
+class TestHours:
+    def test_roundtrip(self):
+        data = build_hours({"engine_hours": 1234.55})
+        assert parse_hours(data)["spn_247_engine_hours"] == pytest.approx(1234.55, abs=0.05)
+
+    def test_not_available(self):
+        assert parse_hours(build_hours({}))["spn_247_engine_hours"] is None
+
+
+class TestVdhr:
+    def test_roundtrip(self):
+        data = build_vdhr({"trip_km": 12.345, "total_km": 98765.4})
+        decoded = parse_vdhr(data)
+        assert decoded["spn_917_trip_distance_km"] == pytest.approx(12.345, abs=0.005)
+        assert decoded["spn_918_total_distance_km"] == pytest.approx(98765.4, abs=0.005)
+
+
+class TestFrameGeneric:
     @pytest.mark.parametrize("pgn", list(MESSAGES))
     def test_every_message_parses_back(self, pgn):
         frame = build_frame(pgn, {}, source_address=0x00)
@@ -298,7 +374,17 @@ class TestRegistry:
 
     def test_transmit_rates(self):
         rates = {m.acronym: m.transmit_rate_ms for m in MESSAGES.values()}
-        assert rates == {"CCVS1": 100, "EEC2": 50, "ETC2": 100, "EBC1": 100, "HVBATT": 1000}
+        assert rates == {
+            "CCVS1": 100,
+            "EEC2": 50,
+            "ETC2": 100,
+            "EBC1": 100,
+            "HVBATT": 1000,
+            "DM1": 1000,
+            "VEP1": 1000,
+            "HOURS": 5000,
+            "VDHR": 1000,
+        }
 
     def test_candump_format(self):
         frame = build_frame(PGN_EEC2, {"accel_pedal_pct": 50}, 0x03)

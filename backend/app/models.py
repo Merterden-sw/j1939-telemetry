@@ -79,3 +79,30 @@ class DecodeRequest(BaseModel):
     """candump bicimindeki bir cerceveyi cozer: 18FEF100#F3003C0000FF1FFF"""
 
     frame: str = Field(..., min_length=10, examples=["18FEF100#F3003C0000FF1FFF"])
+
+
+class FaultCommand(BaseModel):
+    """DM1: ariza tetikleme. spn/fmi bos birakilirsa rastgele secilir."""
+
+    spn: int | None = Field(None, ge=0, le=0x7FFFF)
+    fmi: int | None = Field(None, ge=0, le=31)
+
+
+class AddVehicleRequest(BaseModel):
+    """Arac Ekle panelinden gelen yeni arac tanimi."""
+
+    brand_id: str = Field(..., min_length=1, max_length=40)
+    brand: str = Field(..., min_length=1, max_length=60)
+    model_id: str = Field(..., min_length=1, max_length=40)
+    model: str = Field(..., min_length=1, max_length=60)
+    segment: str = Field("Ozel", max_length=40)
+    country: str = Field("-", max_length=40)
+    color: str = Field("#7d8590", max_length=20)
+    max_speed_kmh: float = Field(..., gt=0, le=250)
+    power_hp: int = Field(..., ge=0, le=3000)
+    powertrain: Literal["diesel", "hybrid", "electric"] = "diesel"
+    gear_count: int = Field(12, ge=0, le=18)
+    battery_kwh: float = Field(2.4, ge=0, le=1000)
+    image_data_url: str | None = Field(
+        None, description="data:image/...;base64,... formatinda arac gorseli (opsiyonel)"
+    )

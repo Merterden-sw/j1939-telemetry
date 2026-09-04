@@ -305,6 +305,110 @@
     node.textContent = frame ? `${frame.can_id_hex}#${frame.data_hex}` : "—";
   }
 
+  /* -------------------------------------------------------------- sekmeler */
+
+  function switchTab(tabName) {
+    document.querySelectorAll(".tab").forEach((btn) =>
+      btn.classList.toggle("is-active", btn.dataset.tab === tabName)
+    );
+    document.querySelectorAll("[data-tabpanel]").forEach((panel) => {
+      panel.hidden = panel.dataset.tabpanel !== tabName;
+    });
+  }
+
+  /* ------------------------------------------------------- telematik okumalar */
+
+  function updateTelematicsReadouts(vehicleState) {
+    el("ro-lat").textContent = fmt(vehicleState.latitude, 5);
+    el("ro-lon").textContent = fmt(vehicleState.longitude, 5);
+    el("ro-odometer").textContent = `${fmt(vehicleState.odometer_km, 0)} km`;
+  }
+
+  /* ------------------------------------------------------------------ harita */
+
+  let leafletMap = null;
+  let leafletMarker = null;
+
+  function ensureMap() {
+    if (leafletMap || !global.L) return leafletMap;
+    leafletMap = global.L.map("vehicle-map", { attributionControl: false, zoomControl: true })
+      .setView([41.0, 29.0], 12);
+    global.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+    }).addTo(leafletMap);
+    leafletMarker = global.L.marker([41.0, 29.0]).addTo(leafletMap);
+    return leafletMap;
+  }
+
+  function updateMap(lat, lon, label) {
+    const map = ensureMap();
+    if (!map) return;
+    leafletMarker.setLatLng([lat, lon]);
+    leafletMarker.bindTooltip(label || "", { permanent: false });
+    map.panTo([lat, lon], { animate: true });
+  }
+
+  function invalidateMapSize() {
+    if (leafletMap) leafletMap.invalidateSize();
+  }
+
+  /* --------------------------------------------------------------- ariza */
+
+  function renderDtcList(container, activeDtcs) {
+    if (!activeDtcs || activeDtcs.length === 0) {
+      container.innerHTML = '<p class="empty">Aktif ariza yok.</p>';
+      return;
+    }
+    container.innerHTML = activeDtcs
+      .map((dtc) => `
+        <div class="dtc-row is-${dtc.occurrence_count > 3 ? "critical" : "warning"}">
+          <span class="dtc-row__spn">SPN ${dtc.spn}</span>
+          <span class="dtc-row__name">${dtc.spn_name || "Bilinmeyen SPN"}</span>
+          <span class="dtc-row__fmi">FMI ${dtc.fmi} · ${dtc.fmi_name || ""}</span>
+          <span class="dtc-row__count">${dtc.occurrence_count}x</span>
+        </div>`)
+      .join("");
+  }
+
+  /* --------------------------------------------------------------- skor */
+
+  const SCORE_RING_LENGTH = 326.7; // 2*pi*52
+
+  function updateScorePanel(score, harshBrakeCount, overspeedCount) {
+    const ratio = Math.min(Math.max(score / 100, 0), 1);
+    const ring = el("score-ring");
+    ring.style.strokeDasharray = String(SCORE_RING_LENGTH);
+    ring.style.strokeDashoffset = String(SCORE_RING_LENGTH * (1 - ratio));
+    ring.style.stroke = score >= 80 ? "var(--ok)" : score >= 50 ? "var(--warn)" : "var(--danger)";
+    el("score-value").textContent = String(Math.round(score));
+    el("score-harsh").textContent = String(harshBrakeCount);
+    el("score-overspeed").textContent = String(overspeedCount);
+  }
+
+  function updateMaintenancePanel(odometerKm, serviceIntervalKm) {
+    const sinceService = odometerKm % serviceIntervalKm;
+    const remaining = serviceIntervalKm - sinceService;
+    const ratio = sinceService / serviceIntervalKm;
+    el("maint-remaining").textContent = `${fmt(remaining, 0)} km`;
+    const fill = el("maint-bar-fill");
+    fill.style.width = `${ratio * 100}%`;
+    fill.classList.toggle("is-warning", ratio > 0.85);
+  }
+
+  /* ---------------------------------------------------------------- lightbox */
+
+  function openLightbox(src, alt) {
+    const img = el("lightbox-img");
+    img.src = src;
+    img.alt = alt || "";
+    el("lightbox").hidden = false;
+  }
+
+  function closeLightbox() {
+    el("lightbox").hidden = true;
+    el("lightbox-img").src = "";
+  }
+
   global.J1939Ui = {
     el,
     fmt,
@@ -319,5 +423,14 @@
     appendLogRow,
     renderFrameTable,
     updateFrameRow,
+    switchTab,
+    updateTelematicsReadouts,
+    updateMap,
+    invalidateMapSize,
+    renderDtcList,
+    updateScorePanel,
+    updateMaintenancePanel,
+    openLightbox,
+    closeLightbox,
   };
 })(window);

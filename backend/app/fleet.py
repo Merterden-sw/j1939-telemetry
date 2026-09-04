@@ -94,6 +94,34 @@ class Fleet:
     def by_source_address(self, source_address: int) -> Vehicle | None:
         return self._by_sa.get(source_address)
 
+    def next_source_address(self) -> int:
+        """Kullanimda olmayan en kucuk J1939 kaynak adresini dondurur (0-253)."""
+        used = self._by_sa.keys()
+        for candidate in range(254):
+            if candidate not in used:
+                return candidate
+        raise ValueError("Kullanilabilir J1939 kaynak adresi kalmadi")
+
+    def add_vehicle(self, vehicle: Vehicle) -> None:
+        """Calisma zamaninda filoya yeni bir arac ekler (Arac Ekle paneli)."""
+        if vehicle.id in self._by_id:
+            raise ValueError(f"Bu kimlikte bir arac zaten var: {vehicle.id}")
+        if vehicle.source_address in self._by_sa:
+            raise ValueError(f"Bu kaynak adresi zaten kullaniliyor: {vehicle.source_address}")
+        self._vehicles.append(vehicle)
+        self._by_id[vehicle.id] = vehicle
+        self._by_sa[vehicle.source_address] = vehicle
+
+    def replace_vehicle(self, vehicle: Vehicle) -> None:
+        """Ayni id/source_address'e sahip mevcut bir araci gunceller (ornek: gorsel eklendiginde)."""
+        existing = self._by_id.get(vehicle.id)
+        if existing is None:
+            raise ValueError(f"Guncellenecek arac bulunamadi: {vehicle.id}")
+        index = self._vehicles.index(existing)
+        self._vehicles[index] = vehicle
+        self._by_id[vehicle.id] = vehicle
+        self._by_sa[vehicle.source_address] = vehicle
+
     def grouped_by_brand(self) -> list[dict]:
         """Arayuzun marka bazli kart gridini kurmasi icin gruplanmis yapi."""
         groups: dict[str, dict] = {}
@@ -110,6 +138,55 @@ class Fleet:
             )
             group["vehicles"].append(vehicle.to_dict())
         return list(groups.values())
+
+
+def build_vehicle(
+    *,
+    brand_id: str,
+    brand: str,
+    model_id: str,
+    model: str,
+    segment: str,
+    country: str,
+    color: str,
+    source_address: int,
+    max_speed_kmh: float,
+    power_hp: int,
+    powertrain: str = "diesel",
+    gear_count: int = 12,
+    idle_rpm: int = 550,
+    max_rpm: int = 1900,
+    battery_kwh: float = 2.4,
+    image: str | None = None,
+    image_credit: str | None = None,
+) -> Vehicle:
+    """Tek bir arac icin tum PGN tanimlayicilarini hesaplayarak Vehicle nesnesi uretir
+    (Arac Ekle panelinde kullanilir)."""
+    can_ids = {
+        pgn: build_can_id(pgn, source_address=source_address, priority=msg.priority)
+        for pgn, msg in MESSAGES.items()
+    }
+    return Vehicle(
+        id=f"{brand_id}-{model_id}",
+        brand_id=brand_id,
+        brand=brand,
+        model_id=model_id,
+        model=model,
+        segment=segment,
+        country=country,
+        color=color,
+        source_address=source_address,
+        max_speed_kmh=float(max_speed_kmh),
+        power_hp=int(power_hp),
+        powertrain=powertrain,
+        gear_count=int(gear_count),
+        idle_rpm=int(idle_rpm),
+        max_rpm=int(max_rpm),
+        battery_kwh=float(battery_kwh),
+        image=image or None,
+        image_credit=image_credit or None,
+        can_ids=can_ids,
+    )
 
 
 def load_fleet(path: str | Path) -> Fleet:

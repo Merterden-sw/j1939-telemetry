@@ -7,31 +7,37 @@ J1939 Telemetri Servisi - FastAPI uygulamasi.
 
 from __future__ import annotations
 
+import base64
 import logging
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import settings
-from .fleet import load_fleet
+from .fleet import build_vehicle, load_fleet
 from .hub import ClientConnection, Hub
 from .j1939 import (
     DLC,
+    FMI_NAMES,
     MESSAGES,
     PGN_CCVS1,
+    SPN_NAMES,
     J1939Error,
     build_frame,
     decode_can_id,
     parse_frame,
 )
 from .models import (
+    AddVehicleRequest,
     BatteryCommand,
     CruiseCommand,
     DecodeRequest,
     EncodeRequest,
+    FaultCommand,
     FleetCommand,
     GearCommand,
     GearRangeCommand,
@@ -199,6 +205,15 @@ async def meta() -> dict:
     return simulator.meta()
 
 
+@app.get("/api/dtc-catalog", tags=["ariza"])
+async def dtc_catalog() -> dict:
+    """DTC (DM1) panelinde gosterilecek SPN/FMI ad sozlugu."""
+    return {
+        "spn_names": {str(k): v for k, v in SPN_NAMES.items()},
+        "fmi_names": {str(k): v for k, v in FMI_NAMES.items()},
+    }
+
+
 @app.get("/api/stats", tags=["servis"])
 async def stats() -> dict:
     return {**simulator.stats(), "clients": hub.client_count}
@@ -301,6 +316,79 @@ async def set_cruise(vehicle_id: str, body: CruiseCommand, _=Depends(get_vehicle
 async def fleet_command(body: FleetCommand) -> dict:
     states = simulator.fleet_command(body.action, body.vehicle_ids)
     return {"action": body.action, "affected": len(states)}
+
+
+@app.post("/api/vehicles/{vehicle_id}/fault", tags=["ariza"])
+async def trigger_fault(vehicle_id: str, body: FaultCommand, _=Depends(get_vehicle_or_404)) -> dict:
+    """DM1: ariza tetikler (govde bossa rastgele SPN/FMI secilir)."""
+    return {"state": simulator.trigger_fault(vehicle_id, body.spn, body.fmi)}
+
+
+@app.delete("/api/vehicles/{vehicle_id}/fault", tags=["ariza"])
+async def clear_faults(vehicle_id: str, _=Depends(get_vehicle_or_404)) -> dict:
+    """DM1: aracin tum aktif ariza kodlarini temizler."""
+    return {"state": simulator.clear_faults(vehicle_id)}
+
+
+@app.post("/api/vehicles/{vehicle_id}/trip/reset", tags=["filo"])
+async def reset_trip(vehicle_id: str, _=Depends(get_vehicle_or_404)) -> dict:
+    """SPN 917 trip mesafesini sifirlar (toplam odometre etkilenmez)."""
+    return {"state": simulator.reset_trip(vehicle_id)}
+
+
+@app.post("/api/fleet/vehicles", tags=["filo"], status_code=201)
+async def add_vehicle(body: AddVehicleRequest) -> dict:
+    """Arac Ekle panelinden gelen yeni araci filoya calisma zamaninda ekler."""
+    source_address = fleet.next_source_address()
+    vehicle = build_vehicle(
+        brand_id=body.brand_id,
+        brand=body.brand,
+        model_id=body.model_id,
+        model=body.model,
+        segment=body.segment,
+        country=body.country,
+        color=body.color,
+        source_address=source_address,
+        max_speed_kmh=body.max_speed_kmh,
+        power_hp=body.power_hp,
+        powertrain=body.powertrain,
+        gear_count=body.gear_count,
+        battery_kwh=body.battery_kwh,
+    )
+    try:
+        fleet.add_vehicle(vehicle)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    state = simulator.add_vehicle(vehicle)
+
+    if body.image_data_url and body.image_data_url.startswith("data:image/"):
+        try:
+            _, encoded = body.image_data_url.split(",", 1)
+            img_dir = Path(__file__).resolve().parent.parent.parent / "frontend" / "img" / "brands"
+            img_dir.mkdir(parents=True, exist_ok=True)
+            (img_dir / f"{vehicle.id}.jpg").write_bytes(base64.b64decode(encoded))
+            vehicle = build_vehicle(
+                brand_id=body.brand_id,
+                brand=body.brand,
+                model_id=body.model_id,
+                model=body.model,
+                segment=body.segment,
+                country=body.country,
+                color=body.color,
+                source_address=source_address,
+                max_speed_kmh=body.max_speed_kmh,
+                power_hp=body.power_hp,
+                powertrain=body.powertrain,
+                gear_count=body.gear_count,
+                battery_kwh=body.battery_kwh,
+                image=f"img/brands/{vehicle.id}.jpg",
+            )
+            fleet.replace_vehicle(vehicle)
+        except Exception:
+            logger.exception("Arac gorseli kaydedilemedi: %s", vehicle.id)
+
+    await hub.broadcast({"type": "snapshot", **simulator.snapshot()})
+    return {"vehicle": vehicle.to_dict(), "state": state}
 
 
 # --------------------------------------------------------------------------- #
@@ -420,6 +508,11 @@ async def _handle_ws_command(client: ClientConnection, message: dict) -> dict:
         "set_cruise": lambda: simulator.set_cruise(
             vehicle_id, bool(message["active"]), message.get("set_speed_kmh")
         ),
+        "trigger_fault": lambda: simulator.trigger_fault(
+            vehicle_id, message.get("spn"), message.get("fmi")
+        ),
+        "clear_faults": lambda: simulator.clear_faults(vehicle_id),
+        "reset_trip": lambda: simulator.reset_trip(vehicle_id),
     }
 
     handler = handlers.get(kind)

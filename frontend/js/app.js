@@ -8,10 +8,14 @@
   const {
     el, fmt, gearLabel, renderFleet, updateCard, renderMonitor, updateMonitorRow,
     updateGauge, updateReadouts, appendLogRow, renderFrameTable, updateFrameRow,
+    switchTab, updateTelematicsReadouts, updateMap, invalidateMapSize, renderDtcList,
+    updateScorePanel, updateMaintenancePanel, openLightbox, closeLightbox,
   } = global.J1939Ui;
 
   const LOG_MAX_ROWS = 300;
   const LOG_ALL_EVERY_N_TICKS = 10; // tum filo modunda saniyede ~1 tur
+  const SERVICE_INTERVAL_KM = 15000;
+  const HARSH_BRAKE_SPEED_THRESHOLD = 40; // km/h ustunde frene basmak "ani fren" sayilir
 
   // Sikistirilmis telemetri satirinin alan sirasi (backend _compact_rows ile ayni)
   const T = { ID: 0, SPEED: 1, ACCEL: 2, BRAKE: 3, GEAR: 4, RANGE: 5,
@@ -22,9 +26,11 @@
     vehicles: new Map(),   // id -> arac tanimi
     states: new Map(),     // id -> simulator durumu
     telemetry: new Map(),  // id -> cozulmus telemetri satiri
+    driverStats: new Map(), // id -> { harshBrakes, overspeedCount, score, prevBrake, wasOverspeed }
     messages: [],          // PGN tanimlari
     meta: { max_speed_kmh: 180, tick_ms: 100 },
     selectedId: null,
+    activeTab: "telemetry",
     filters: { search: "", brand: "" },
     log: { paused: false, all: false },
     dirty: false,
@@ -135,9 +141,10 @@
 
     // Saniyede bir gelen tam durum senkronu (mod, hedef hiz, fren, cruise).
     if (message.states) {
-      Object.entries(message.states).forEach(([id, vehicleState]) =>
-        state.states.set(id, vehicleState)
-      );
+      Object.entries(message.states).forEach(([id, vehicleState]) => {
+        state.states.set(id, vehicleState);
+        updateDriverStats(id, vehicleState);
+      });
       const selected = selectedState();
       if (selected) {
         syncControlStates(selected);
@@ -206,6 +213,28 @@
         note: frameNote(frame),
       }, LOG_MAX_ROWS);
     });
+  }
+
+  function updateDriverStats(id, vehicleState) {
+    let stats = state.driverStats.get(id);
+    if (!stats) {
+      stats = { harshBrakes: 0, overspeedCount: 0, prevBrake: false, wasOverspeed: false };
+      state.driverStats.set(id, stats);
+    }
+
+    const speed = vehicleState.speed_kmh || 0;
+    if (vehicleState.brake && !stats.prevBrake && speed > HARSH_BRAKE_SPEED_THRESHOLD) {
+      stats.harshBrakes += 1;
+    }
+    stats.prevBrake = vehicleState.brake;
+
+    const vehicle = state.vehicles.get(id);
+    const limit = vehicle ? vehicle.max_speed_kmh * 0.95 : Infinity;
+    const isOverspeed = vehicleState.online && speed > limit;
+    if (isOverspeed && !stats.wasOverspeed) stats.overspeedCount += 1;
+    stats.wasOverspeed = isOverspeed;
+
+    stats.score = Math.min(100, Math.max(0, 100 - stats.harshBrakes * 8 - stats.overspeedCount * 4));
   }
 
   function updateStats(stats) {
@@ -350,6 +379,7 @@
         const speed = vehicleState.online && telemetry ? telemetry.speed : 0;
         updateGauge(speed, vehicleState.target_speed_kmh, max);
         updateReadouts(vehicleState, telemetry);
+        updateTelematicsReadouts(vehicleState);
 
         // Motor sesi secili aracin telemetrisini izler.
         audio.update({
@@ -361,6 +391,24 @@
           powertrain: vehicle.powertrain,
           online: vehicleState.online,
         });
+
+        if (state.activeTab === "location") {
+          updateMap(vehicleState.latitude, vehicleState.longitude, vehicle.display_name);
+        }
+
+        const dtcCount = (vehicleState.active_dtcs || []).length;
+        const badge = el("dtc-count");
+        badge.hidden = dtcCount === 0;
+        badge.textContent = String(dtcCount);
+        if (state.activeTab === "dtc") {
+          renderDtcList(el("dtc-list"), vehicleState.active_dtcs);
+        }
+
+        if (state.activeTab === "score") {
+          const stats = state.driverStats.get(vehicle.id) || { score: 100, harshBrakes: 0, overspeedCount: 0 };
+          updateScorePanel(stats.score, stats.harshBrakes, stats.overspeedCount);
+          updateMaintenancePanel(vehicleState.odometer_km, SERVICE_INTERVAL_KM);
+        }
       }
     }
     requestAnimationFrame(render);
@@ -511,6 +559,120 @@
     el("log-all").addEventListener("change", (event) => {
       state.log.all = event.target.checked;
       el("log").textContent = "";
+    });
+
+    /* -------------------------------------------------------------- sekmeler */
+
+    document.querySelectorAll(".tab").forEach((button) =>
+      button.addEventListener("click", () => {
+        state.activeTab = button.dataset.tab;
+        switchTab(state.activeTab);
+        if (state.activeTab === "location") {
+          requestAnimationFrame(() => invalidateMapSize());
+        }
+        state.dirty = true;
+      })
+    );
+
+    /* ----------------------------------------------------------------- ariza */
+
+    el("dtc-trigger").addEventListener("click", () => {
+      if (state.selectedId) send({ type: "trigger_fault", vehicle_id: state.selectedId });
+    });
+    el("dtc-clear").addEventListener("click", () => {
+      if (state.selectedId) send({ type: "clear_faults", vehicle_id: state.selectedId });
+    });
+    el("trip-reset").addEventListener("click", () => {
+      if (state.selectedId) send({ type: "reset_trip", vehicle_id: state.selectedId });
+    });
+
+    /* --------------------------------------------------------------- lightbox */
+
+    document.addEventListener("click", (event) => {
+      const img = event.target.closest("img.vehicle-art--photo, .modal__preview");
+      if (img && img.src) openLightbox(img.src, img.alt);
+    });
+    el("lightbox-close").addEventListener("click", closeLightbox);
+    el("lightbox").addEventListener("click", (event) => {
+      if (event.target.id === "lightbox") closeLightbox();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeLightbox();
+    });
+
+    /* ----------------------------------------------------------- arac ekle */
+
+    bindAddVehicleModal();
+  }
+
+  function bindAddVehicleModal() {
+    const overlay = el("add-vehicle-overlay");
+    const form = el("add-vehicle-form");
+    const errorEl = el("av-error");
+    let imageDataUrl = null;
+
+    const openModal = () => {
+      form.reset();
+      errorEl.hidden = true;
+      imageDataUrl = null;
+      el("av-image-preview").hidden = true;
+      overlay.hidden = false;
+    };
+    const closeModal = () => { overlay.hidden = true; };
+
+    el("open-add-vehicle").addEventListener("click", openModal);
+    el("add-vehicle-close").addEventListener("click", closeModal);
+    el("add-vehicle-cancel").addEventListener("click", closeModal);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) closeModal();
+    });
+
+    el("av-image").addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (!file) { imageDataUrl = null; return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        imageDataUrl = reader.result;
+        const preview = el("av-image-preview");
+        preview.src = imageDataUrl;
+        preview.hidden = false;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    const slug = (text) =>
+      text.trim().toLocaleLowerCase("tr").replace(/ı/g, "i")
+        .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "arac";
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      errorEl.hidden = true;
+
+      const brand = el("av-brand").value.trim();
+      const model = el("av-model").value.trim();
+      if (!brand || !model) return;
+
+      const body = {
+        brand_id: slug(brand),
+        brand,
+        model_id: slug(model),
+        model,
+        segment: el("av-segment").value.trim() || "Ozel",
+        country: el("av-country").value.trim() || "-",
+        color: el("av-color").value || "#7d8590",
+        power_hp: Number(el("av-power").value) || 0,
+        max_speed_kmh: Number(el("av-maxspeed").value) || 90,
+        powertrain: el("av-powertrain").value || "diesel",
+        image_data_url: imageDataUrl,
+      };
+
+      try {
+        await global.J1939Api.addVehicle(body);
+        closeModal();
+      } catch (error) {
+        errorEl.textContent = error.message || "Arac eklenemedi.";
+        errorEl.hidden = false;
+      }
     });
   }
 

@@ -26,12 +26,22 @@ class TestServiceEndpoints:
         body = client.get("/api/health").json()
         assert body["status"] == "ok"
         assert body["vehicles"] == 30
-        assert body["messages"] == 5
+        assert body["messages"] == 9
 
     def test_meta_lists_all_messages(self, client):
         body = client.get("/api/meta").json()
         acronyms = {m["acronym"] for m in body["messages"]}
-        assert acronyms == {"CCVS1", "EEC2", "ETC2", "EBC1", "HVBATT"}
+        assert acronyms == {
+            "CCVS1",
+            "EEC2",
+            "ETC2",
+            "EBC1",
+            "HVBATT",
+            "DM1",
+            "VEP1",
+            "HOURS",
+            "VDHR",
+        }
         assert body["vehicle_count"] == 30
         assert body["gear_ranges"] == ["P", "R", "N", "D"]
 
@@ -54,16 +64,27 @@ class TestServiceEndpoints:
         assert vehicle["display_name"] == "Volvo Trucks FH16"
         assert vehicle["can_id_hex"] == "18FEF106"
         assert vehicle["powertrain"] in {"diesel", "hybrid", "electric"}
-        assert set(vehicle["can_ids"]) == {"CCVS1", "EEC2", "ETC2", "EBC1", "HVBATT"}
+        assert set(vehicle["can_ids"]) == {
+            "CCVS1",
+            "EEC2",
+            "ETC2",
+            "EBC1",
+            "HVBATT",
+            "DM1",
+            "VEP1",
+            "HOURS",
+            "VDHR",
+        }
 
     def test_unknown_vehicle_returns_404(self, client):
         assert client.get("/api/vehicles/yok-boyle-bir-arac").status_code == 404
 
     def test_image_fields_are_exposed(self, client):
-        # Gorsel istege baglidir; tanimsizken null doner ve arayuz SVG cizer.
+        # Butun filo icin resmi kaynaklardan gercek gorsel taniml; bos oldugunda
+        # arayuz SVG cizime doner (bkz. frontend/img/README.md).
         vehicle = client.get("/api/vehicles/mercedes-benz-actros").json()["vehicle"]
         assert "image" in vehicle and "image_credit" in vehicle
-        assert vehicle["image"] is None
+        assert vehicle["image"] == "img/brands/mercedes-benz-actros.jpg"
 
     def test_every_vehicle_carries_image_fields(self, client):
         araclar = [v for b in client.get("/api/vehicles").json()["brands"] for v in b["vehicles"]]
@@ -83,18 +104,18 @@ class TestSignalInjection:
         )
 
     def test_accelerator_pedal(self, client):
-        body = client.post("/api/vehicles/daf-cf/accelerator", json={"pedal_pct": 70}).json()
+        body = client.post("/api/vehicles/daf-xd/accelerator", json={"pedal_pct": 70}).json()
         assert body["state"]["accel_pedal_pct"] == 70
         assert body["state"]["control_source"] == "pedal"
 
     def test_brake_pedal_sets_switch(self, client):
-        body = client.post("/api/vehicles/daf-cf/brake-pedal", json={"pedal_pct": 55}).json()
+        body = client.post("/api/vehicles/daf-xd/brake-pedal", json={"pedal_pct": 55}).json()
         assert body["state"]["brake_pedal_pct"] == 55
         assert body["state"]["brake"] is True
 
     def test_pedal_out_of_range_rejected(self, client):
         assert (
-            client.post("/api/vehicles/daf-cf/accelerator", json={"pedal_pct": 150}).status_code
+            client.post("/api/vehicles/daf-xd/accelerator", json={"pedal_pct": 150}).status_code
             == 422
         )
 
@@ -118,7 +139,7 @@ class TestSignalInjection:
 
     def test_gear_beyond_model_range_rejected(self, client):
         # Isuzu NPR 6 vitesli
-        assert client.post("/api/vehicles/isuzu-npr/gear", json={"gear": 14}).status_code == 404
+        assert client.post("/api/vehicles/isuzu-elf/gear", json={"gear": 14}).status_code == 404
 
     def test_battery(self, client):
         body = client.post(
@@ -132,20 +153,20 @@ class TestSignalInjection:
 
     def test_mode_and_toggles(self, client):
         assert (
-            client.post("/api/vehicles/daf-lf/mode", json={"mode": "auto"}).json()["state"]["mode"]
+            client.post("/api/vehicles/daf-xb/mode", json={"mode": "auto"}).json()["state"]["mode"]
             == "auto"
         )
         assert (
-            client.post("/api/vehicles/daf-lf/brake", json={"value": True}).json()["state"]["brake"]
+            client.post("/api/vehicles/daf-xb/brake", json={"value": True}).json()["state"]["brake"]
             is True
         )
         assert (
-            client.post("/api/vehicles/daf-lf/online", json={"value": False}).json()["state"][
+            client.post("/api/vehicles/daf-xb/online", json={"value": False}).json()["state"][
                 "online"
             ]
             is False
         )
-        client.post("/api/vehicles/daf-lf/online", json={"value": True})
+        client.post("/api/vehicles/daf-xb/online", json={"value": True})
 
     def test_cruise_control(self, client):
         body = client.post(
@@ -236,7 +257,7 @@ class TestWebSocket:
             message = ws.receive_json()
             assert message["type"] == "snapshot"
             assert len(message["brands"]) == 10
-            assert len(message["meta"]["messages"]) == 5
+            assert len(message["meta"]["messages"]) == 9
 
     def test_speed_command_over_socket(self, client):
         with client.websocket_connect("/ws") as ws:
@@ -273,18 +294,28 @@ class TestWebSocket:
             ws.send_json({"type": "subscribe", "vehicle_ids": ["volvo-fm"]})
             assert wait_for(ws, "subscribed")["vehicle_ids"] == ["volvo-fm"]
 
-            # HVBATT saniyede bir yayinlandigi ve yavas istemcide kuyruktan
-            # mesaj dusebildigi icin butce genis tutulur.
+            # HOURS 5 saniyede bir yayinlanir (en yavas mesaj); yavas
+            # istemcide kuyruktan mesaj dusebildigi icin butce genis tutulur.
             seen = set()
-            for _ in range(400):
+            for _ in range(700):
                 message = ws.receive_json()
                 if message.get("type") != "telemetry":
                     continue
                 for frame in message.get("frames", []):
                     seen.add(frame["acronym"])
-                if len(seen) >= 5:
+                if len(seen) >= 9:
                     break
-            assert seen == {"CCVS1", "EEC2", "ETC2", "EBC1", "HVBATT"}
+            assert seen == {
+                "CCVS1",
+                "EEC2",
+                "ETC2",
+                "EBC1",
+                "HVBATT",
+                "DM1",
+                "VEP1",
+                "HOURS",
+                "VDHR",
+            }
 
     def test_frames_carry_decoded_signals(self, client):
         with client.websocket_connect("/ws") as ws:

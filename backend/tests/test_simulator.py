@@ -62,9 +62,9 @@ class TestTransmitRates:
         assert battery_ticks == 1
 
     def test_offline_vehicle_is_silent_on_all_pgns(self, sim):
-        sim.set_online("isuzu-npr", False)
+        sim.set_online("isuzu-elf", False)
         frames = sim.tick()
-        assert all(f["vehicle_id"] != "isuzu-npr" for f in frames)
+        assert all(f["vehicle_id"] != "isuzu-elf" for f in frames)
         assert len(frames) == 29 * 4
 
 
@@ -146,15 +146,15 @@ class TestBrakePedal:
         assert sim.state_of("iveco-s-way")["speed_kmh"] == 0
 
     def test_harder_pedal_stops_sooner(self, sim):
-        sim.set_speed("daf-cf", 80, instant=True)
-        sim.set_brake_pedal("daf-cf", 20)
+        sim.set_speed("daf-xd", 80, instant=True)
+        sim.set_brake_pedal("daf-xd", 20)
         run_ticks(sim, 10)
-        yumusak = sim.state_of("daf-cf")["speed_kmh"]
+        yumusak = sim.state_of("daf-xd")["speed_kmh"]
 
-        sim.set_speed("daf-cf", 80, instant=True)
-        sim.set_brake_pedal("daf-cf", 100)
+        sim.set_speed("daf-xd", 80, instant=True)
+        sim.set_brake_pedal("daf-xd", 100)
         run_ticks(sim, 10)
-        assert sim.state_of("daf-cf")["speed_kmh"] < yumusak
+        assert sim.state_of("daf-xd")["speed_kmh"] < yumusak
 
 
 class TestTransmission:
@@ -173,10 +173,10 @@ class TestTransmission:
         assert decoded["spn_523_current_gear"] == sim.state_of("scania-s730")["gear"]
 
     def test_gear_never_exceeds_model_gear_count(self, sim):
-        vehicle = sim.fleet.get("isuzu-npr")
-        sim.set_speed("isuzu-npr", 180, instant=True)
+        vehicle = sim.fleet.get("isuzu-elf")
+        sim.set_speed("isuzu-elf", 180, instant=True)
         run_ticks(sim, 20)
-        assert sim.state_of("isuzu-npr")["gear"] <= vehicle.gear_count
+        assert sim.state_of("isuzu-elf")["gear"] <= vehicle.gear_count
 
     @pytest.mark.parametrize("gear_range,expected", [("P", 0), ("N", 0), ("R", -1)])
     def test_range_sets_gear(self, sim, gear_range, expected):
@@ -215,7 +215,7 @@ class TestTransmission:
 
     def test_gear_out_of_range_rejected(self, sim):
         with pytest.raises(SimulatorError):
-            sim.set_gear("isuzu-npr", 15)  # 6 vitesli model
+            sim.set_gear("isuzu-elf", 15)  # 6 vitesli model
 
 
 class TestEngine:
@@ -301,7 +301,7 @@ class TestSnapshot:
         snapshot = sim.snapshot()
         assert len(snapshot["brands"]) == 10
         assert len(snapshot["states"]) == 30
-        assert len(snapshot["meta"]["messages"]) == 5
+        assert len(snapshot["meta"]["messages"]) == 9
 
     def test_light_states_omit_frames(self, sim):
         sim.tick()
@@ -311,6 +311,8 @@ class TestSnapshot:
 
     def test_stats_track_transmitted_frames(self, sim):
         run_ticks(sim, 10)
-        # 9 tick x 4 mesaj + 1 tick x 5 mesaj = 41 cerceve/arac
-        assert sim.stats()["frames_sent"] == 30 * 41
-        assert sim.stats()["message_count"] == 5
+        # CCVS1/EEC2/ETC2/EBC1 her tick (4x10=40) + HVBATT/DM1/VEP1/VDHR
+        # tick 10'da bir kez (4x1=4) = 44 cerceve/arac; HOURS 50 tick'te bir,
+        # 10 tick icinde henuz yayinlanmadi.
+        assert sim.stats()["frames_sent"] == 30 * 44
+        assert sim.stats()["message_count"] == 9

@@ -6,6 +6,7 @@
   <title>J1939 Telemetri Kontrol Paneli</title>
   <meta name="description" content="CCVS1 / EEC2 / ETC2 / EBC1 / HVBATT mesajlarini ureten arac telemetri simulasyon paneli" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🚚</text></svg>" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
@@ -50,6 +51,7 @@
             <select id="brand-filter" class="input" aria-label="Marka filtresi">
               <option value="">Tum markalar</option>
             </select>
+            <button class="btn btn--primary" id="open-add-vehicle">+ Arac Ekle</button>
           </div>
         </div>
 
@@ -121,6 +123,15 @@
                 SA <span id="sel-sa" class="mono">—</span>
               </p>
             </div>
+
+            <div class="tabs" role="tablist" aria-label="Telemetri sekmeleri">
+              <button class="tab is-active" data-tab="telemetry" role="tab">Telemetri</button>
+              <button class="tab" data-tab="location" role="tab">Konum</button>
+              <button class="tab" data-tab="dtc" role="tab">Ariza <span class="tab__badge" id="dtc-count" hidden>0</span></button>
+              <button class="tab" data-tab="score" role="tab">Skor</button>
+            </div>
+
+            <div class="tabpanel" data-tabpanel="telemetry">
 
             <!-- Hiz gostergesi ve dijital okumalar -->
             <div class="gauge">
@@ -259,6 +270,63 @@
               <div class="frame-list" id="frame-list"></div>
             </div>
 
+            </div> <!-- /tabpanel: telemetry -->
+
+            <!-- ----------------------------------------------------- Konum -->
+            <div class="tabpanel" data-tabpanel="location" hidden>
+              <div id="vehicle-map" class="map"></div>
+              <div class="readouts">
+                <div class="readout">
+                  <span class="readout__label">Enlem</span>
+                  <span class="readout__value" id="ro-lat" style="font-size:13px">—</span>
+                </div>
+                <div class="readout">
+                  <span class="readout__label">Boylam</span>
+                  <span class="readout__value" id="ro-lon" style="font-size:13px">—</span>
+                </div>
+                <div class="readout">
+                  <span class="readout__label">Toplam KM</span>
+                  <span class="readout__value" id="ro-odometer" style="font-size:13px">0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ------------------------------------------------------ Ariza -->
+            <div class="tabpanel" data-tabpanel="dtc" hidden>
+              <div class="dtc-actions">
+                <button class="btn btn--danger" id="dtc-trigger">Rastgele Ariza Tetikle</button>
+                <button class="btn btn--ghost" id="dtc-clear">Tumunu Temizle</button>
+              </div>
+              <div class="dtc-list" id="dtc-list">
+                <p class="empty">Aktif ariza yok.</p>
+              </div>
+            </div>
+
+            <!-- ------------------------------------------------------- Skor -->
+            <div class="tabpanel" data-tabpanel="score" hidden>
+              <div class="score-card">
+                <div class="score-card__ring">
+                  <svg viewBox="0 0 120 120" aria-hidden="true">
+                    <circle class="score-ring__track" cx="60" cy="60" r="52" />
+                    <circle class="score-ring__value" id="score-ring" cx="60" cy="60" r="52" />
+                  </svg>
+                  <span class="score-card__number" id="score-value">100</span>
+                </div>
+                <div class="score-card__stats">
+                  <div class="readout"><span class="readout__label">Ani Fren</span><span class="readout__value" id="score-harsh">0</span></div>
+                  <div class="readout"><span class="readout__label">Asiri Hiz</span><span class="readout__value" id="score-overspeed">0</span></div>
+                </div>
+              </div>
+              <div class="maintenance">
+                <div class="maintenance__head">
+                  <span class="field__label">Bakima Kalan Mesafe</span>
+                  <span class="mono" id="maint-remaining">— km</span>
+                </div>
+                <div class="maintenance__bar"><span id="maint-bar-fill" style="width:0%"></span></div>
+                <button class="btn btn--ghost" id="trip-reset">Trip Sifirla</button>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
@@ -284,6 +352,81 @@
     <span id="footer-endpoint" class="mono">—</span>
   </footer>
 
+  <!-- ===================================================================== -->
+  <!-- Arac Ekle modali                                                       -->
+  <!-- ===================================================================== -->
+  <div class="modal-overlay" id="add-vehicle-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Arac Ekle">
+      <div class="modal__head">
+        <h2>Arac Ekle</h2>
+        <button class="modal__close" id="add-vehicle-close" aria-label="Kapat">&times;</button>
+      </div>
+      <form class="modal__body" id="add-vehicle-form">
+        <label class="field">
+          <span class="field__label">Marka Adi</span>
+          <input type="text" id="av-brand" class="input input--full" required maxlength="60" placeholder="orn. Hyundai Trucks" />
+        </label>
+        <label class="field">
+          <span class="field__label">Model Adi</span>
+          <input type="text" id="av-model" class="input input--full" required maxlength="60" placeholder="orn. Xcient" />
+        </label>
+        <div class="field-row">
+          <label class="field">
+            <span class="field__label">Segment</span>
+            <input type="text" id="av-segment" class="input input--full" maxlength="40" placeholder="orn. Agir Ticari" />
+          </label>
+          <label class="field">
+            <span class="field__label">Ulke</span>
+            <input type="text" id="av-country" class="input input--full" maxlength="40" placeholder="orn. Guney Kore" />
+          </label>
+        </div>
+        <div class="field-row">
+          <label class="field">
+            <span class="field__label">Guc (HP)</span>
+            <input type="number" id="av-power" class="input input--full" min="0" max="3000" required value="400" />
+          </label>
+          <label class="field">
+            <span class="field__label">Azami Hiz (km/h)</span>
+            <input type="number" id="av-maxspeed" class="input input--full" min="1" max="250" required value="90" />
+          </label>
+        </div>
+        <div class="field-row">
+          <label class="field">
+            <span class="field__label">Aktarma Organi</span>
+            <select id="av-powertrain" class="input input--full">
+              <option value="diesel">Dizel</option>
+              <option value="hybrid">Hibrit</option>
+              <option value="electric">Elektrikli</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">Renk</span>
+            <input type="color" id="av-color" class="input input--full" value="#7d8590" />
+          </label>
+        </div>
+        <label class="field">
+          <span class="field__label">Arac Gorseli</span>
+          <input type="file" id="av-image" accept="image/*" class="input input--full" />
+          <img id="av-image-preview" class="modal__preview" hidden />
+        </label>
+        <p class="modal__error" id="av-error" hidden></p>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" id="add-vehicle-cancel">Vazgec</button>
+          <button type="submit" class="btn btn--primary">Filoya Ekle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- Gorsel buyutme (lightbox)                                              -->
+  <!-- ===================================================================== -->
+  <div class="lightbox" id="lightbox" hidden>
+    <button class="lightbox__close" id="lightbox-close" aria-label="Kapat">&times;</button>
+    <img id="lightbox-img" alt="" />
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/api.js"></script>
   <script src="js/socket.js"></script>
   <script src="js/vehicle-art.js"></script>

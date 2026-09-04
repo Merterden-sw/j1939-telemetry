@@ -48,6 +48,7 @@
 
   const post = (path, body) =>
     request(path, { method: "POST", body: JSON.stringify(body || {}) });
+  const del = (path) => request(path, { method: "DELETE" });
 
   global.J1939Api = {
     HTTP_BASE,
@@ -70,5 +71,11 @@
 
     encode:      (speedKmh, sourceAddress) => post("/api/j1939/encode", { speed_kmh: speedKmh, source_address: sourceAddress }),
     decode:      (frame) => post("/api/j1939/decode", { frame }),
+
+    dtcCatalog:  () => request("/api/dtc-catalog"),
+    triggerFault:(id, spn, fmi) => post(`/api/vehicles/${id}/fault`, { spn: spn ?? null, fmi: fmi ?? null }),
+    clearFaults: (id) => del(`/api/vehicles/${id}/fault`),
+    resetTrip:   (id) => post(`/api/vehicles/${id}/trip/reset`),
+    addVehicle:  (body) => post("/api/fleet/vehicles", body),
   };
 })(window);

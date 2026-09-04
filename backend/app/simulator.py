@@ -10,6 +10,10 @@ yayin periyoduna gore uretilir:
     ETC2   100 ms   vites ve kademe (P/R/N/D)
     EBC1   100 ms   fren pedali konumu, ABS
     HVBATT 1000 ms  batarya SOC / SOH
+    DM1    1000 ms  aktif ariza kodlari (basitlestirilmis, tek DTC)
+    VEP1   1000 ms  konum (enlem/boylam)
+    HOURS  5000 ms  motor calisma saati
+    VDHR   1000 ms  trip / toplam mesafe
 
 Uretilen cerceveler bir geri cagirma uzerinden yayin katmanina aktarilir;
 simulatorun agdan haberi yoktur.
@@ -20,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import math
 import random
 import time
 from collections.abc import Awaitable, Callable, Iterable
@@ -27,7 +32,7 @@ from dataclasses import dataclass, field
 
 from .config import Settings
 from .fleet import Fleet, Vehicle
-from .j1939 import MESSAGES, PGN_CCVS1, build_frame
+from .j1939 import FAULT_POOL, FMI_NAMES, MESSAGES, PGN_CCVS1, SPN_NAMES, build_frame
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +83,15 @@ class VehicleState:
     cruise_active: bool = False
     cruise_set_speed_kmh: int | None = None
 
+    # Filo telematik: konum, calisma saati, mesafe, ariza kodlari
+    latitude: float = 0.0
+    longitude: float = 0.0
+    heading_deg: float = 0.0
+    engine_hours: float = 0.0
+    trip_km: float = 0.0
+    odometer_km: float = 0.0
+    active_dtcs: list = field(default_factory=list)
+
     # Sayaclar
     tx_counter: int = 0
     last_frames: dict[int, dict] = field(default_factory=dict)
@@ -119,6 +133,20 @@ class VehicleState:
             # HVBATT
             "soc_pct": self.soc_pct,
             "soh_pct": self.soh_pct,
+            # DM1
+            "dtc_spn": self.active_dtcs[-1]["spn"] if self.active_dtcs else None,
+            "dtc_fmi": self.active_dtcs[-1]["fmi"] if self.active_dtcs else None,
+            "dtc_occurrence_count": self.active_dtcs[-1]["occurrence_count"]
+            if self.active_dtcs
+            else 1,
+            # VEP1
+            "latitude_deg": self.latitude,
+            "longitude_deg": self.longitude,
+            # HOURS
+            "engine_hours": self.engine_hours,
+            # VDHR
+            "trip_km": self.trip_km,
+            "total_km": self.odometer_km,
         }
 
     def _gear_ratio(self) -> float | None:
@@ -150,6 +178,12 @@ class VehicleState:
             "cruise_set_speed_kmh": self.cruise_set_speed_kmh,
             "tx_counter": self.tx_counter,
             "updated_at": self.updated_at,
+            "latitude": round(self.latitude, 7),
+            "longitude": round(self.longitude, 7),
+            "engine_hours": round(self.engine_hours, 2),
+            "trip_km": round(self.trip_km, 3),
+            "odometer_km": round(self.odometer_km, 3),
+            "active_dtcs": list(self.active_dtcs),
         }
         if include_frames:
             payload["last_frames"] = self.last_frames
@@ -165,6 +199,9 @@ class Simulator:
         self.settings = settings
         self.states: dict[str, VehicleState] = {}
         self._rng = random.Random(20260902)
+        # Konum/ariza rastgeleligi icin ayri RNG: mevcut soc/soh ve auto-mode
+        # cekimlerinin sirasini bozmamak icin.
+        self._telemetry_rng = random.Random(20260903)
 
         for vehicle in fleet:
             # Dizel araclarda SPN 5464 starter akusunu temsil eder ve alternator
@@ -174,11 +211,13 @@ class Simulator:
                 if vehicle.powertrain == "diesel"
                 else self._rng.uniform(45.0, 95.0)
             )
-            self.states[vehicle.id] = VehicleState(
+            state = VehicleState(
                 vehicle_id=vehicle.id,
                 soc_pct=soc,
                 soh_pct=self._rng.uniform(88.0, 100.0),
             )
+            self._seed_position(state, vehicle)
+            self.states[vehicle.id] = state
 
         # Her mesajin kac tick'te bir yayinlanacagi
         self._intervals = {
@@ -330,8 +369,62 @@ class Simulator:
         self._update_gear(vehicle, state)
         self._update_engine(vehicle, state)
         self._update_battery(vehicle, state, dt)
+        self._update_position(state, dt)
+        self._update_hours_and_distance(state, dt)
+        self._update_faults(state)
 
         state.updated_at = time.time()
+
+    @staticmethod
+    def _seed_position(state: VehicleState, vehicle: Vehicle) -> None:
+        """Kaynak adresten turetilen deterministik baslangic konumu (Istanbul cevresi)."""
+        state.latitude = 41.0 + (vehicle.source_address % 30) * 0.015
+        state.longitude = 28.9 + (vehicle.source_address % 30) * 0.02
+        state.heading_deg = (vehicle.source_address * 37) % 360
+
+    def _update_position(self, state: VehicleState, dt: float) -> None:
+        """Hareket halindeyken konumu hafif rastgele bir rota ile ilerletir."""
+        if state.speed_kmh <= 0.5:
+            return
+        state.heading_deg = (state.heading_deg + self._telemetry_rng.uniform(-3.0, 3.0)) % 360.0
+        heading_rad = math.radians(state.heading_deg)
+        distance_m = state.speed_kmh / 3.6 * dt
+        lat_rad = math.radians(state.latitude)
+        state.latitude += (distance_m * math.cos(heading_rad)) / 111_320.0
+        state.longitude += (distance_m * math.sin(heading_rad)) / (
+            111_320.0 * max(math.cos(lat_rad), 1e-6)
+        )
+
+    def _update_hours_and_distance(self, state: VehicleState, dt: float) -> None:
+        """Motor calisma saati her zaman, mesafe hiza gore birikir."""
+        state.engine_hours += dt / 3600.0
+        distance_km = (state.speed_kmh * dt) / 3600.0
+        state.trip_km += distance_km
+        state.odometer_km += distance_km
+
+    def _update_faults(self, state: VehicleState) -> None:
+        """Demo amacli, dusuk olasilikli rastgele DM1 ariza tetiklemesi."""
+        if len(state.active_dtcs) < 4 and self._telemetry_rng.random() < 0.0001:
+            spn, fmi = self._telemetry_rng.choice(FAULT_POOL)
+            self._add_fault(state, spn, fmi)
+
+    @staticmethod
+    def _add_fault(state: VehicleState, spn: int, fmi: int) -> dict:
+        """Ayni SPN/FMI zaten aktifse tekrar sayacini artirir, degilse ekler."""
+        for dtc in state.active_dtcs:
+            if dtc["spn"] == spn and dtc["fmi"] == fmi:
+                dtc["occurrence_count"] += 1
+                return dtc
+        dtc = {
+            "spn": spn,
+            "spn_name": SPN_NAMES.get(spn, f"SPN {spn}"),
+            "fmi": fmi,
+            "fmi_name": FMI_NAMES.get(fmi, f"FMI {fmi}"),
+            "occurrence_count": 1,
+            "triggered_at": time.time(),
+        }
+        state.active_dtcs.append(dtc)
+        return dtc
 
     def _update_pedals(self, state: VehicleState, target: float) -> None:
         """Hiz kontrolunde gaz pedali, hiz hatasindan turetilir."""
@@ -595,6 +688,39 @@ class Simulator:
             state.brake_pedal_pct = 0.0
         else:
             state.cruise_active = False
+        return state.to_dict()
+
+    def trigger_fault(
+        self, vehicle_id: str, spn: int | None = None, fmi: int | None = None
+    ) -> dict:
+        """DM1: aktif ariza ekler (spn/fmi verilmezse FAULT_POOL'dan rastgele secilir)."""
+        _, state = self._require(vehicle_id)
+        if spn is None or fmi is None:
+            spn, fmi = self._telemetry_rng.choice(FAULT_POOL)
+        if not 0 <= spn <= 0x7FFFF:
+            raise SimulatorError(f"Gecersiz SPN: {spn}")
+        if not 0 <= fmi <= 0x1F:
+            raise SimulatorError(f"Gecersiz FMI: {fmi}")
+        self._add_fault(state, spn, fmi)
+        return state.to_dict()
+
+    def clear_faults(self, vehicle_id: str) -> dict:
+        """DM1: aracin tum aktif ariza kodlarini temizler."""
+        _, state = self._require(vehicle_id)
+        state.active_dtcs.clear()
+        return state.to_dict()
+
+    def reset_trip(self, vehicle_id: str) -> dict:
+        """Trip mesafesini (SPN 917) sifirlar; toplam odometre etkilenmez."""
+        _, state = self._require(vehicle_id)
+        state.trip_km = 0.0
+        return state.to_dict()
+
+    def add_vehicle(self, vehicle: Vehicle) -> dict:
+        """Arac Ekle panelinden gelen yeni araci calisma zamani durumuna kaydeder."""
+        state = VehicleState(vehicle_id=vehicle.id)
+        self._seed_position(state, vehicle)
+        self.states[vehicle.id] = state
         return state.to_dict()
 
     def fleet_command(self, action: str, vehicle_ids: Iterable[str] | None = None) -> list[dict]:

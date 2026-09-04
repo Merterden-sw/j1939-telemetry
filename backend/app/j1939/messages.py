@@ -12,6 +12,10 @@ Desteklenen mesajlar:
     PGN 61445  0xF005  ETC2    Electronic Transmission Controller 2
     PGN 61441  0xF001  EBC1    Electronic Brake Controller 1
     PGN 64923  0xFD9B  HVBATT  Yuksek gerilim batarya paketi
+    PGN 65226  0xFECA  DM1     Active Diagnostic Trouble Codes (basitlestirilmis)
+    PGN 65267  0xFEF3  VEP1    Vehicle Position (Latitude/Longitude)
+    PGN 65253  0xFEE5  HOURS   Engine Hours, Revolutions
+    PGN 65248  0xFEE0  VDHR    High Resolution Vehicle Distance
 """
 
 from __future__ import annotations
@@ -42,8 +46,81 @@ PGN_EEC2: Final[int] = 61443  # 0xF003
 PGN_ETC2: Final[int] = 61445  # 0xF005
 PGN_EBC1: Final[int] = 61441  # 0xF001
 PGN_HVBATT: Final[int] = 64923  # 0xFD9B
+PGN_DM1: Final[int] = 65226  # 0xFECA
+PGN_VEP1: Final[int] = 65267  # 0xFEF3
+PGN_HOURS: Final[int] = 65253  # 0xFEE5
+PGN_VDHR: Final[int] = 65248  # 0xFEE0
 
 DLC: Final[int] = 8
+
+# SPN 584/585 - Latitude / Longitude: 1e-7 deg/bit, offset -210
+POSITION_RESOLUTION: Final[float] = 1e-7
+POSITION_OFFSET: Final[float] = -210.0
+
+# SPN 247 - Engine Total Hours of Operation: 0.05 h/bit
+ENGINE_HOURS_RESOLUTION: Final[float] = 0.05
+
+# SPN 917 (Trip) / 918 (Total) - High Resolution Vehicle Distance: 5 m/bit
+DISTANCE_RESOLUTION: Final[float] = 0.005
+
+# DM1 - basitlestirilmis tek-DTC gosterimi (bkz. build_dm1 docstring)
+DM1_FMI_NOT_AVAILABLE: Final[int] = 0x1F
+
+# Sik kullanilan SPN adlari (arac ariza panelinde gosterim icin)
+SPN_NAMES: Final[dict[int, str]] = {
+    70: "Park Freni Anahtari",
+    84: "Tekerlek Hizi",
+    91: "Gaz Pedali Pozisyonu",
+    94: "Yakit Filtresi Basinci",
+    97: "Su/Yakit Ayirici Seviyesi",
+    100: "Motor Yag Basinci",
+    105: "Turbo Emme Havasi Sicakligi",
+    110: "Motor Sogutma Suyu Sicakligi",
+    111: "Sogutma Suyu Seviyesi",
+    158: "Anahtarli Batarya Voltaji",
+    168: "Batarya Sarj Voltaji",
+    174: "Yakit Sicakligi",
+    190: "Motor Devri (RPM)",
+    247: "Motor Calisma Saati",
+    629: "ECU Dahili Ariza",
+    639: "CAN Veri Yolu Hatasi",
+}
+
+# Sik kullanilan FMI (Failure Mode Identifier) aciklamalari (J1939-73)
+FMI_NAMES: Final[dict[int, str]] = {
+    0: "Deger Cok Yuksek (Kritik)",
+    1: "Deger Cok Dusuk (Kritik)",
+    2: "Veri Guvenilmez / Kararsiz",
+    3: "Voltaj Yuksek / Kisa Devre",
+    4: "Voltaj Dusuk / Topraklama",
+    5: "Akim Dusuk / Devre Acik",
+    6: "Akim Yuksek / Kisa Devre",
+    7: "Mekanik Ariza",
+    9: "Anormal Guncelleme Hizi",
+    11: "Kok Neden Bilinmiyor",
+    12: "Cihaz Arizali",
+    13: "Kalibrasyon Disi",
+    14: "Ozel Talimat",
+    16: "Deger Cok Yuksek (Orta)",
+    17: "Deger Cok Dusuk (Orta)",
+    18: "Deger Cok Yuksek (Az Onemli)",
+    19: "Sebeke Veri Hatasi",
+    31: "Durum Mevcut / Onaylanmis",
+}
+
+# Rastgele ariza tetiklemesi icin ornek SPN/FMI havuzu (SPN_NAMES alt kumesi)
+FAULT_POOL: Final[tuple[tuple[int, int], ...]] = (
+    (110, 0),
+    (110, 16),
+    (100, 1),
+    (100, 17),
+    (168, 4),
+    (168, 3),
+    (97, 31),
+    (105, 0),
+    (111, 17),
+    (639, 2),
+)
 
 # --------------------------------------------------------------------------- #
 # SPN olcek tanimlari
@@ -375,6 +452,165 @@ def parse_hvbatt(data: bytes) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# PGN 65226 - DM1 (Active Diagnostic Trouble Codes)
+# --------------------------------------------------------------------------- #
+#
+# Gercek J1939-73 DM1 mesaji, birden fazla DTC oldugunda 8 byte'i asar ve
+# TP.BAM (multi-packet transport) gerektirir. Bu simulator TP katmanini
+# uygulamiyor; bunun yerine DM1'i her zaman sabit 8 byte'lik, EN FAZLA BIR
+# aktif DTC gosteren basitlestirilmis bir cerceve olarak kodluyor. Aracin TAM
+# ariza listesi VehicleState.active_dtcs uzerinden JSON/WS ile ayrica tasinir;
+# CAN cercevesi yalnizca "en son" DTC'yi (veya hic yoksa temiz durumu) temsil
+# eder.
+#
+#     Byte 1 : Lamp status  (bit0-1 MIL, digerleri not-available)
+#     Byte 2 : Flash status (0xFF = not available)
+#     Byte 3 : SPN dusuk byte (bit 0-7)
+#     Byte 4 : SPN orta byte  (bit 8-15)
+#     Byte 5 : bit 0-2 SPN yuksek 3 bit, bit 3-7 FMI (5 bit)
+#     Byte 6 : bit 0-6 Occurrence Count, bit 7 SPN Conversion Method
+#     Byte 7-8: rezerve (0xFF)
+
+
+def build_dm1(signals: dict) -> bytes:
+    spn = signals.get("dtc_spn")
+    fmi = signals.get("dtc_fmi")
+    has_fault = spn is not None and fmi is not None
+    occurrence_count = signals.get("dtc_occurrence_count", 1)
+
+    byte1 = 0b01 if has_fault else 0b00  # MIL: 01=on, 00=off
+    byte2 = BYTE_NOT_AVAILABLE
+
+    if has_fault:
+        if not 0 <= spn <= 0x7FFFF:
+            raise J1939Error(f"SPN 0-524287 araliginda olmali: {spn}")
+        if not 0 <= fmi <= 0x1F:
+            raise J1939Error(f"FMI 0-31 araliginda olmali: {fmi}")
+        byte3 = spn & 0xFF
+        byte4 = (spn >> 8) & 0xFF
+        byte5 = ((spn >> 16) & 0x07) | ((fmi & 0x1F) << 3)
+        byte6 = (min(max(int(occurrence_count), 0), 0x7F)) | 0x80
+    else:
+        byte3 = 0x00
+        byte4 = 0x00
+        byte5 = DM1_FMI_NOT_AVAILABLE << 3
+        byte6 = 0x00
+
+    return bytes((byte1, byte2, byte3, byte4, byte5, byte6, 0xFF, 0xFF))
+
+
+def parse_dm1(data: bytes) -> dict:
+    mil = data[0] & 0x03
+    spn = data[2] | (data[3] << 8) | ((data[4] & 0x07) << 16)
+    fmi = (data[4] >> 3) & 0x1F
+    occurrence_count = data[5] & 0x7F
+    active = mil == 0b01 and fmi != DM1_FMI_NOT_AVAILABLE
+
+    return {
+        "mil_lamp_on": mil == 0b01,
+        "spn": spn if active else None,
+        "spn_name": SPN_NAMES.get(spn) if active else None,
+        "fmi": fmi if active else None,
+        "fmi_name": FMI_NAMES.get(fmi) if active else None,
+        "occurrence_count": occurrence_count if active else 0,
+    }
+
+
+# --------------------------------------------------------------------------- #
+# 4-byte (dogrudan) olcekleme - core.encode_scaled/decode_scaled 1-2 byte'lik
+# alanlar icin sentinel degerler kullanir; 32-bit SPN'ler (konum/saat/mesafe)
+# icin ayni matematigi burada tekrarliyoruz.
+# --------------------------------------------------------------------------- #
+
+DWORD_NOT_AVAILABLE: Final[int] = 0xFFFFFFFF
+DWORD_ERROR: Final[int] = 0xFE000000
+
+
+def _encode_scaled32(value: float | None, *, resolution: float, offset: float = 0.0) -> int:
+    if value is None:
+        return DWORD_NOT_AVAILABLE
+    raw = int(round((float(value) - offset) / resolution))
+    return min(max(raw, 0), DWORD_NOT_AVAILABLE - 1)
+
+
+def _decode_scaled32(
+    raw: int, *, resolution: float, offset: float = 0.0, digits: int = 3
+) -> float | None:
+    if raw >= DWORD_ERROR:
+        return None
+    return round(raw * resolution + offset, digits)
+
+
+# --------------------------------------------------------------------------- #
+# PGN 65267 - Vehicle Position (SPN 584 Latitude / SPN 585 Longitude)
+# --------------------------------------------------------------------------- #
+
+
+def build_vep1(signals: dict) -> bytes:
+    lat_raw = _encode_scaled32(
+        signals.get("latitude_deg"), resolution=POSITION_RESOLUTION, offset=POSITION_OFFSET
+    )
+    lon_raw = _encode_scaled32(
+        signals.get("longitude_deg"), resolution=POSITION_RESOLUTION, offset=POSITION_OFFSET
+    )
+    return lat_raw.to_bytes(4, "little") + lon_raw.to_bytes(4, "little")
+
+
+def parse_vep1(data: bytes) -> dict:
+    lat_raw = int.from_bytes(data[0:4], "little")
+    lon_raw = int.from_bytes(data[4:8], "little")
+    return {
+        "spn_584_latitude_deg": _decode_scaled32(
+            lat_raw, resolution=POSITION_RESOLUTION, offset=POSITION_OFFSET, digits=7
+        ),
+        "spn_585_longitude_deg": _decode_scaled32(
+            lon_raw, resolution=POSITION_RESOLUTION, offset=POSITION_OFFSET, digits=7
+        ),
+    }
+
+
+# --------------------------------------------------------------------------- #
+# PGN 65253 - Engine Hours, Revolutions (SPN 247)
+# --------------------------------------------------------------------------- #
+
+
+def build_hours(signals: dict) -> bytes:
+    raw = _encode_scaled32(signals.get("engine_hours"), resolution=ENGINE_HOURS_RESOLUTION)
+    return raw.to_bytes(4, "little") + b"\xff\xff\xff\xff"
+
+
+def parse_hours(data: bytes) -> dict:
+    raw = int.from_bytes(data[0:4], "little")
+    return {
+        "spn_247_engine_hours": _decode_scaled32(raw, resolution=ENGINE_HOURS_RESOLUTION, digits=2)
+    }
+
+
+# --------------------------------------------------------------------------- #
+# PGN 65248 - High Resolution Vehicle Distance (SPN 917 Trip / SPN 918 Total)
+# --------------------------------------------------------------------------- #
+
+
+def build_vdhr(signals: dict) -> bytes:
+    trip_raw = _encode_scaled32(signals.get("trip_km"), resolution=DISTANCE_RESOLUTION)
+    total_raw = _encode_scaled32(signals.get("total_km"), resolution=DISTANCE_RESOLUTION)
+    return trip_raw.to_bytes(4, "little") + total_raw.to_bytes(4, "little")
+
+
+def parse_vdhr(data: bytes) -> dict:
+    trip_raw = int.from_bytes(data[0:4], "little")
+    total_raw = int.from_bytes(data[4:8], "little")
+    return {
+        "spn_917_trip_distance_km": _decode_scaled32(
+            trip_raw, resolution=DISTANCE_RESOLUTION, digits=3
+        ),
+        "spn_918_total_distance_km": _decode_scaled32(
+            total_raw, resolution=DISTANCE_RESOLUTION, digits=3
+        ),
+    }
+
+
+# --------------------------------------------------------------------------- #
 # Kayit defteri
 # --------------------------------------------------------------------------- #
 
@@ -474,6 +710,49 @@ MESSAGES: Final[dict[int, MessageDef]] = {
         builder=build_hvbatt,
         parser=parse_hvbatt,
         spns=("5464 State of Charge", "5465 State of Health"),
+    ),
+    PGN_DM1: MessageDef(
+        pgn=PGN_DM1,
+        acronym="DM1",
+        name="Active Diagnostic Trouble Codes",
+        priority=6,
+        transmit_rate_ms=1000,
+        builder=build_dm1,
+        parser=parse_dm1,
+        spns=("1213 MIL Lamp", "1214 SPN", "1215 FMI", "1216 Occurrence Count"),
+    ),
+    PGN_VEP1: MessageDef(
+        pgn=PGN_VEP1,
+        acronym="VEP1",
+        name="Vehicle Position",
+        priority=6,
+        transmit_rate_ms=1000,
+        builder=build_vep1,
+        parser=parse_vep1,
+        spns=("584 Latitude", "585 Longitude"),
+    ),
+    PGN_HOURS: MessageDef(
+        pgn=PGN_HOURS,
+        acronym="HOURS",
+        name="Engine Hours, Revolutions",
+        priority=6,
+        transmit_rate_ms=5000,
+        builder=build_hours,
+        parser=parse_hours,
+        spns=("247 Engine Total Hours of Operation",),
+    ),
+    PGN_VDHR: MessageDef(
+        pgn=PGN_VDHR,
+        acronym="VDHR",
+        name="High Resolution Vehicle Distance",
+        priority=6,
+        transmit_rate_ms=1000,
+        builder=build_vdhr,
+        parser=parse_vdhr,
+        spns=(
+            "917 Trip Distance (High Resolution)",
+            "918 Total Vehicle Distance (High Resolution)",
+        ),
     ),
 }
 

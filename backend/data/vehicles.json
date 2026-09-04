@@ -72,6 +72,55 @@
           "5464": "State of Charge (0.4 %/bit)",
           "5465": "State of Health (0.4 %/bit)"
         }
+      },
+      {
+        "pgn": 65226,
+        "pgn_hex": "0xFECA",
+        "acronym": "DM1",
+        "name": "Active Diagnostic Trouble Codes",
+        "priority": 6,
+        "transmit_rate_ms": 1000,
+        "spns": {
+          "1213": "MIL Lamp (2 bit)",
+          "1214": "Suspect Parameter Number",
+          "1215": "Failure Mode Identifier (5 bit)",
+          "1216": "Occurrence Count (7 bit)"
+        }
+      },
+      {
+        "pgn": 65267,
+        "pgn_hex": "0xFEF3",
+        "acronym": "VEP1",
+        "name": "Vehicle Position",
+        "priority": 6,
+        "transmit_rate_ms": 1000,
+        "spns": {
+          "584": "Latitude (1e-7 deg/bit, offset -210)",
+          "585": "Longitude (1e-7 deg/bit, offset -210)"
+        }
+      },
+      {
+        "pgn": 65253,
+        "pgn_hex": "0xFEE5",
+        "acronym": "HOURS",
+        "name": "Engine Hours, Revolutions",
+        "priority": 6,
+        "transmit_rate_ms": 5000,
+        "spns": {
+          "247": "Engine Total Hours of Operation (0.05 h/bit)"
+        }
+      },
+      {
+        "pgn": 65248,
+        "pgn_hex": "0xFEE0",
+        "acronym": "VDHR",
+        "name": "High Resolution Vehicle Distance",
+        "priority": 6,
+        "transmit_rate_ms": 1000,
+        "spns": {
+          "917": "Trip Distance High Resolution (5 m/bit)",
+          "918": "Total Vehicle Distance High Resolution (5 m/bit)"
+        }
       }
     ]
   },
@@ -94,8 +143,8 @@
           "max_rpm": 1900,
           "powertrain": "hybrid",
           "battery_kwh": 90,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/mercedes-benz-actros.jpg",
+          "image_credit": "Wikimedia Commons (CC BY-SA)"
         },
         {
           "id": "arocs",
@@ -109,8 +158,8 @@
           "max_rpm": 2000,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/mercedes-benz-arocs.jpg",
+          "image_credit": "Wikimedia Commons (CC BY-SA)"
         },
         {
           "id": "atego",
@@ -124,8 +173,8 @@
           "max_rpm": 10000,
           "powertrain": "electric",
           "battery_kwh": 180,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/mercedes-benz-atego.jpg",
+          "image_credit": "Wikimedia Commons (CC BY-SA)"
         }
       ]
     },
@@ -147,8 +196,8 @@
           "max_rpm": 1900,
           "powertrain": "hybrid",
           "battery_kwh": 90,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/man-tgx.jpg",
+          "image_credit": "Wikimedia Commons (CC BY-SA)"
         },
         {
           "id": "tgs",
@@ -162,8 +211,8 @@
           "max_rpm": 2000,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/man-tgs.jpg",
+          "image_credit": "Wikimedia Commons (CC BY-SA)"
         },
         {
           "id": "tgm",
@@ -177,8 +226,8 @@
           "max_rpm": 10000,
           "powertrain": "electric",
           "battery_kwh": 180,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/man-tgm.jpg",
+          "image_credit": "Wikimedia Commons (CC BY-SA)"
         }
       ]
     },
@@ -200,8 +249,8 @@
           "max_rpm": 1900,
           "powertrain": "hybrid",
           "battery_kwh": 90,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/volvo-fh16.jpg",
+          "image_credit": "Wikimedia Commons (CC BY-SA)"
         },
         {
           "id": "fm",
@@ -215,8 +264,8 @@
           "max_rpm": 10000,
           "powertrain": "electric",
           "battery_kwh": 350,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/volvo-fm.jpg",
+          "image_credit": "Wikimedia Commons (CC BY-SA)"
         },
         {
           "id": "fmx",
@@ -230,8 +279,8 @@
           "max_rpm": 2000,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/volvo-fmx.jpg",
+          "image_credit": "Wikimedia Commons (CC BY-SA)"
         }
       ]
     },
@@ -253,8 +302,8 @@
           "max_rpm": 1900,
           "powertrain": "hybrid",
           "battery_kwh": 90,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/scania-r500.jpg",
+          "image_credit": "Wikimedia Commons (CC BY-SA)"
         },
         {
           "id": "s730",
@@ -268,8 +317,8 @@
           "max_rpm": 1900,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/scania-s730.jpg",
+          "image_credit": "Wikimedia Commons (CC BY-SA)"
         },
         {
           "id": "g410",
@@ -283,8 +332,8 @@
           "max_rpm": 2100,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/scania-g410.jpg",
+          "image_credit": "Wikimedia Commons (CC BY-SA)"
         }
       ]
     },
@@ -297,47 +346,47 @@
         {
           "id": "xf",
           "name": "XF",
-          "segment": "Agir Ticari",
+          "segment": "Uzun Yol",
           "source_address": 12,
           "max_speed_kmh": 90,
-          "power_hp": 480,
+          "power_hp": 530,
           "gear_count": 12,
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "hybrid",
           "battery_kwh": 90,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/daf-xf.jpg",
+          "image_credit": "Resmi kaynak: daf.com"
         },
         {
-          "id": "cf",
-          "name": "CF",
-          "segment": "Bolgesel",
+          "id": "xd",
+          "name": "XD",
+          "segment": "Insaat",
           "source_address": 13,
-          "max_speed_kmh": 90,
-          "power_hp": 430,
+          "max_speed_kmh": 89,
+          "power_hp": 360,
           "gear_count": 12,
           "idle_rpm": 600,
           "max_rpm": 2100,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/daf-xd.jpg",
+          "image_credit": "Resmi kaynak: daf.com"
         },
         {
-          "id": "lf",
-          "name": "LF",
+          "id": "xb",
+          "name": "XB",
           "segment": "Dagitim",
           "source_address": 14,
-          "max_speed_kmh": 100,
-          "power_hp": 260,
+          "max_speed_kmh": 90,
+          "power_hp": 250,
           "gear_count": 2,
           "idle_rpm": 0,
           "max_rpm": 10000,
           "powertrain": "electric",
           "battery_kwh": 180,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/daf-xb.jpg",
+          "image_credit": "Resmi kaynak: daf.com"
         }
       ]
     },
@@ -350,7 +399,7 @@
         {
           "id": "s-way",
           "name": "S-Way",
-          "segment": "Agir Ticari",
+          "segment": "Uzun Yol",
           "source_address": 15,
           "max_speed_kmh": 90,
           "power_hp": 510,
@@ -359,38 +408,38 @@
           "max_rpm": 1900,
           "powertrain": "hybrid",
           "battery_kwh": 90,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/iveco-s-way.jpg",
+          "image_credit": "Resmi kaynak: iveco.com"
         },
         {
-          "id": "eurocargo",
-          "name": "Eurocargo",
-          "segment": "Dagitim",
+          "id": "x-way",
+          "name": "X-Way",
+          "segment": "Insaat",
           "source_address": 16,
-          "max_speed_kmh": 100,
-          "power_hp": 280,
+          "max_speed_kmh": 85,
+          "power_hp": 460,
           "gear_count": 8,
           "idle_rpm": 650,
           "max_rpm": 2300,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/iveco-x-way.jpg",
+          "image_credit": "Resmi kaynak: iveco.com"
         },
         {
-          "id": "trakker",
-          "name": "Trakker",
-          "segment": "Insaat",
+          "id": "t-way",
+          "name": "T-Way",
+          "segment": "Arazi",
           "source_address": 17,
-          "max_speed_kmh": 85,
-          "power_hp": 450,
+          "max_speed_kmh": 80,
+          "power_hp": 480,
           "gear_count": 16,
           "idle_rpm": 600,
           "max_rpm": 2000,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/iveco-t-way.jpg",
+          "image_credit": "Resmi kaynak: iveco.com"
         }
       ]
     },
@@ -412,8 +461,8 @@
           "max_rpm": 1900,
           "powertrain": "hybrid",
           "battery_kwh": 90,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/renault-trucks-t-high.jpg",
+          "image_credit": "Resmi kaynak: renault-trucks.co.uk"
         },
         {
           "id": "c",
@@ -427,8 +476,8 @@
           "max_rpm": 2000,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/renault-trucks-c.jpg",
+          "image_credit": "Resmi kaynak: renault-trucks.co.uk"
         },
         {
           "id": "k",
@@ -442,8 +491,8 @@
           "max_rpm": 2000,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/renault-trucks-k.jpg",
+          "image_credit": "Resmi kaynak: renault-trucks.co.uk"
         }
       ]
     },
@@ -465,38 +514,38 @@
           "max_rpm": 1900,
           "powertrain": "hybrid",
           "battery_kwh": 90,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/ford-trucks-f-max.jpg",
+          "image_credit": "Resmi kaynak: fordtrucks.com.tr"
         },
         {
-          "id": "1848t",
-          "name": "1848T",
-          "segment": "Agir Ticari",
+          "id": "3545d",
+          "name": "3545D",
+          "segment": "Insaat",
           "source_address": 22,
           "max_speed_kmh": 90,
-          "power_hp": 480,
+          "power_hp": 450,
           "gear_count": 12,
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/ford-trucks-3545d.jpg",
+          "image_credit": "Resmi kaynak: fordtrucks.com.tr"
         },
         {
-          "id": "3543m",
-          "name": "3543M",
-          "segment": "Insaat",
+          "id": "2533hr",
+          "name": "2533 HR",
+          "segment": "Dagitim",
           "source_address": 23,
-          "max_speed_kmh": 80,
-          "power_hp": 430,
+          "max_speed_kmh": 100,
+          "power_hp": 330,
           "gear_count": 16,
           "idle_rpm": 600,
           "max_rpm": 2000,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/ford-trucks-2533hr.jpg",
+          "image_credit": "Resmi kaynak: fordtrucks.com.tr"
         }
       ]
     },
@@ -507,38 +556,38 @@
       "color": "#ff375f",
       "models": [
         {
-          "id": "tugra",
-          "name": "Tugra",
+          "id": "tgr1846",
+          "name": "TGR 1846",
           "segment": "Uzun Yol",
           "source_address": 24,
           "max_speed_kmh": 90,
-          "power_hp": 480,
+          "power_hp": 460,
           "gear_count": 12,
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/bmc-tgr1846.jpg",
+          "image_credit": "Resmi kaynak: bmc.com.tr"
         },
         {
-          "id": "pro-935",
-          "name": "Pro 935",
+          "id": "prol1852",
+          "name": "PRO L 1852",
           "segment": "Dagitim",
           "source_address": 25,
           "max_speed_kmh": 100,
-          "power_hp": 300,
+          "power_hp": 520,
           "gear_count": 8,
           "idle_rpm": 650,
           "max_rpm": 2300,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/bmc-prol1852.jpg",
+          "image_credit": "Resmi kaynak: bmc.com.tr"
         },
         {
-          "id": "levend",
-          "name": "Levend",
+          "id": "417",
+          "name": "417 EV",
           "segment": "Hafif",
           "source_address": 26,
           "max_speed_kmh": 120,
@@ -548,8 +597,8 @@
           "max_rpm": 10000,
           "powertrain": "electric",
           "battery_kwh": 180,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/bmc-417.jpg",
+          "image_credit": "Resmi kaynak: bmc.com.tr"
         }
       ]
     },
@@ -571,8 +620,8 @@
           "max_rpm": 1900,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/isuzu-giga.jpg",
+          "image_credit": "Resmi kaynak: isuzu.co.jp"
         },
         {
           "id": "forward",
@@ -586,12 +635,12 @@
           "max_rpm": 2300,
           "powertrain": "diesel",
           "battery_kwh": 2.4,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/isuzu-forward.jpg",
+          "image_credit": "Resmi kaynak: isuzu.co.jp"
         },
         {
-          "id": "npr",
-          "name": "NPR",
+          "id": "elf",
+          "name": "Elf",
           "segment": "Hafif",
           "source_address": 29,
           "max_speed_kmh": 120,
@@ -601,8 +650,8 @@
           "max_rpm": 10000,
           "powertrain": "electric",
           "battery_kwh": 180,
-          "image": null,
-          "image_credit": null
+          "image": "img/brands/isuzu-elf.jpg",
+          "image_credit": "Resmi kaynak: isuzu.co.jp"
         }
       ]
     }
