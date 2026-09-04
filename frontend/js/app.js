@@ -246,7 +246,14 @@
     el("selected-canid").textContent = vehicle.can_id_hex;
 
     // Secili aracin buyuk gorseli
-    el("sel-art").innerHTML = global.J1939VehicleArt(vehicle, { badge: false });
+    const art = el("sel-art");
+    art.innerHTML = global.J1939VehicleArt(vehicle, { badge: false });
+    global.J1939VehicleArt.bindFallbacks(art);
+
+    // Gorsel bir kaynaktan alindiysa atif zorunlu olabilir (CC lisanslari).
+    const credit = el("sel-art-credit");
+    credit.textContent = vehicle.image_credit || "";
+    credit.hidden = !vehicle.image_credit;
 
     // Vites secimi, modelin vites sayisina gore doldurulur.
     const gearSelect = el("gear-select");

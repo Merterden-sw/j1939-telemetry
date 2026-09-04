@@ -59,6 +59,17 @@ class TestServiceEndpoints:
     def test_unknown_vehicle_returns_404(self, client):
         assert client.get("/api/vehicles/yok-boyle-bir-arac").status_code == 404
 
+    def test_image_fields_are_exposed(self, client):
+        # Gorsel istege baglidir; tanimsizken null doner ve arayuz SVG cizer.
+        vehicle = client.get("/api/vehicles/mercedes-benz-actros").json()["vehicle"]
+        assert "image" in vehicle and "image_credit" in vehicle
+        assert vehicle["image"] is None
+
+    def test_every_vehicle_carries_image_fields(self, client):
+        araclar = [v for b in client.get("/api/vehicles").json()["brands"] for v in b["vehicles"]]
+        assert len(araclar) == 30
+        assert all("image" in v and "image_credit" in v for v in araclar)
+
 
 class TestSignalInjection:
     def test_speed_injection_returns_frame_preview(self, client):

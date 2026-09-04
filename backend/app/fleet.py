@@ -32,6 +32,11 @@ class Vehicle:
     max_rpm: int = 1900
     battery_kwh: float = 2.4
 
+    # Istege bagli gorsel. Frontend kokune gore yol (ornek: "img/actros.jpg").
+    # Bos birakilirsa arayuz yerlesik SVG cizimini kullanir.
+    image: str | None = None
+    image_credit: str | None = None
+
     # Her PGN icin onceden hesaplanmis 29-bit tanimlayicilar
     can_ids: dict[int, int] = field(default_factory=dict)
 
@@ -150,6 +155,8 @@ def load_fleet(path: str | Path) -> Fleet:
                     idle_rpm=int(model.get("idle_rpm", 550)),
                     max_rpm=int(model.get("max_rpm", 1900)),
                     battery_kwh=float(model.get("battery_kwh", 2.4)),
+                    image=model.get("image") or None,
+                    image_credit=model.get("image_credit") or None,
                     can_ids=can_ids,
                 )
             )

@@ -10,6 +10,8 @@ COPY nginx.conf /etc/nginx/conf.d/telemetry.conf
 COPY index.html /usr/share/nginx/html/index.html
 COPY css/       /usr/share/nginx/html/css/
 COPY js/        /usr/share/nginx/html/js/
+# Istege bagli arac gorselleri (bos olabilir; arayuz SVG cizimine doner)
+COPY img/       /usr/share/nginx/html/img/
 
 EXPOSE 80
 

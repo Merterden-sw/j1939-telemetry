@@ -127,6 +127,8 @@
     if (refs.size === 0) {
       container.innerHTML = '<p class="empty">Aramayla eslesen arac yok.</p>';
     }
+    // Yuklenemeyen fotograflar sessizce SVG cizime doner.
+    global.J1939VehicleArt.bindFallbacks(container);
     return refs;
   }
 

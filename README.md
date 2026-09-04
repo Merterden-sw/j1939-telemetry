@@ -305,14 +305,49 @@ Derleme adimi gerektirmeyen (vanilla JS) bir panel.
 
 ### Arac kartlari
 
-Her kartta aracin segmentine gore cizilen bir SVG gorsel (cekici, damperli,
-kasali, panelvan), marka renginde kabin ve aktarma organi rozeti (D / HEV / EV)
-bulunur. Altinda anlik hiz, vites gostergesi, gaz/fren pedali barlari ve
-SOC/SOH olcerleri yer alir.
+Her kartta aracin gorseli, marka renginde kabin ve aktarma organi rozeti
+(D / HEV / EV) bulunur. Altinda anlik hiz, vites gostergesi, gaz/fren pedali
+barlari ve SOC/SOH olcerleri yer alir.
 
-> Gorseller **dis kaynaga bagimli degildir**. Konteyner icinde, internet
-> olmadan ve siki bir CSP altinda da calismasi gerektigi icin Unsplash gibi
-> bir servisten cekilmek yerine yerinde uretilir.
+### Arac gorselleri
+
+Iki kaynak desteklenir ve **varsayilan SVG'dir**:
+
+| Durum | Sonuc |
+|---|---|
+| `image` alani bos | Segmente gore yerinde cizilen SVG siluet |
+| `image` dolu, dosya var | Gercek gorsel (`<img>`) |
+| `image` dolu, dosya yok | Sessizce SVG cizime doner — bozuk gorsel ikonu cikmaz |
+
+Boylece proje kutudan ciktigi gibi hicbir dis kaynaga bagimli olmadan,
+internet olmadan ve siki bir CSP altinda calisir; gorsel eklemek istege
+baglidir.
+
+**Gorsel eklemek icin** dosyayi `frontend/img/` dizinine koyun ve
+`backend/data/vehicles.json` icinde ilgili modelin `image` alanini doldurun:
+
+```json
+{
+  "id": "actros",
+  "name": "Actros",
+  "image": "img/mercedes-benz-actros.webp",
+  "image_credit": "Foto: Ad Soyad — CC BY-SA 4.0"
+}
+```
+
+`image_credit` doldurulursa secili aracin gorselinin altinda gosterilir;
+Creative Commons lisansli gorsellerde atif zorunludur.
+
+Onerilen en-boy orani 320 × 132 (kart alaniyla ayni), 640 × 264 piksel
+cozunurluk ve `.webp` bicimi yeterlidir. Ayrintilar:
+[`frontend/img/README.md`](frontend/img/README.md)
+
+> **Telif:** Buraya yalnizca kullanim hakkina sahip oldugunuz gorselleri
+> koyun. Uretici sitelerindeki (Mercedes-Benz, Volvo, MAN vb.) basin ve
+> tanitim fotograflari telif hakkiyla korunur; herkese acik bir depoda
+> yayinlanmalari ihlal olusturur. Guvenli kaynaklar: kendi cektiginiz
+> fotograflar, Wikimedia Commons uzerindeki Creative Commons lisansli
+> gorseller veya ureticiden yazili izin aldiginiz basin kiti gorselleri.
 
 ### Motor sesi (Web Audio API)
 
@@ -427,6 +462,7 @@ j1939-telemetry/
 │   ├── index.html
 │   ├── css/styles.css
 │   ├── js/{api,socket,vehicle-art,audio,ui,app}.js
+│   ├── img/                  # istege bagli arac gorselleri (bos)
 │   ├── nginx.conf
 │   └── Dockerfile
 ├── .github/workflows/main.yml

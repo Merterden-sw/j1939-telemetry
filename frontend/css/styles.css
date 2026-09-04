@@ -251,6 +251,27 @@ h3 { font-size: 20px; }
 }
 .vehicle-art { display: block; width: 100%; height: auto; }
 
+/* Gercek gorsel: kart alaniyla ayni en-boy oraninda kirpilir. */
+.vehicle-art--photo {
+  aspect-ratio: 320 / 132;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--bg-input);
+}
+
+/* Fotograf uzerine bindirilen aktarma organi rozeti (SVG'de gomulu gelir). */
+.art-badge {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  padding: 1px 7px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #0d1117;
+  opacity: .92;
+}
+
 .card__gear {
   position: absolute; top: 6px; left: 8px;
   min-width: 24px; padding: 1px 6px;
@@ -320,7 +341,17 @@ h3 { font-size: 20px; }
   border: 1px solid var(--border);
   border-radius: var(--radius-s);
 }
+.control__art { position: relative; }
 .control__art .vehicle-art { max-height: 118px; }
+.control__art .vehicle-art--photo { width: 100%; max-height: 140px; }
+
+.control__credit {
+  margin: 4px 0 0;
+  font-size: 9.5px;
+  line-height: 1.35;
+  color: var(--text-faint);
+  text-align: center;
+}
 .control__brand { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-faint); }
 .control__meta  { margin: 3px 0 0; font-size: 11.5px; color: var(--text-dim); }
 

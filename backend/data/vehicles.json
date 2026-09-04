@@ -93,7 +93,9 @@
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "hybrid",
-          "battery_kwh": 90
+          "battery_kwh": 90,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "arocs",
@@ -106,7 +108,9 @@
           "idle_rpm": 600,
           "max_rpm": 2000,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "atego",
@@ -119,7 +123,9 @@
           "idle_rpm": 0,
           "max_rpm": 10000,
           "powertrain": "electric",
-          "battery_kwh": 180
+          "battery_kwh": 180,
+          "image": null,
+          "image_credit": null
         }
       ]
     },
@@ -140,7 +146,9 @@
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "hybrid",
-          "battery_kwh": 90
+          "battery_kwh": 90,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "tgs",
@@ -153,7 +161,9 @@
           "idle_rpm": 600,
           "max_rpm": 2000,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "tgm",
@@ -166,7 +176,9 @@
           "idle_rpm": 0,
           "max_rpm": 10000,
           "powertrain": "electric",
-          "battery_kwh": 180
+          "battery_kwh": 180,
+          "image": null,
+          "image_credit": null
         }
       ]
     },
@@ -187,7 +199,9 @@
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "hybrid",
-          "battery_kwh": 90
+          "battery_kwh": 90,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "fm",
@@ -200,7 +214,9 @@
           "idle_rpm": 0,
           "max_rpm": 10000,
           "powertrain": "electric",
-          "battery_kwh": 350
+          "battery_kwh": 350,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "fmx",
@@ -213,7 +229,9 @@
           "idle_rpm": 600,
           "max_rpm": 2000,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         }
       ]
     },
@@ -234,7 +252,9 @@
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "hybrid",
-          "battery_kwh": 90
+          "battery_kwh": 90,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "s730",
@@ -247,7 +267,9 @@
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "g410",
@@ -260,7 +282,9 @@
           "idle_rpm": 600,
           "max_rpm": 2100,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         }
       ]
     },
@@ -281,7 +305,9 @@
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "hybrid",
-          "battery_kwh": 90
+          "battery_kwh": 90,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "cf",
@@ -294,7 +320,9 @@
           "idle_rpm": 600,
           "max_rpm": 2100,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "lf",
@@ -307,7 +335,9 @@
           "idle_rpm": 0,
           "max_rpm": 10000,
           "powertrain": "electric",
-          "battery_kwh": 180
+          "battery_kwh": 180,
+          "image": null,
+          "image_credit": null
         }
       ]
     },
@@ -328,7 +358,9 @@
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "hybrid",
-          "battery_kwh": 90
+          "battery_kwh": 90,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "eurocargo",
@@ -341,7 +373,9 @@
           "idle_rpm": 650,
           "max_rpm": 2300,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "trakker",
@@ -354,7 +388,9 @@
           "idle_rpm": 600,
           "max_rpm": 2000,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         }
       ]
     },
@@ -375,7 +411,9 @@
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "hybrid",
-          "battery_kwh": 90
+          "battery_kwh": 90,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "c",
@@ -388,7 +426,9 @@
           "idle_rpm": 600,
           "max_rpm": 2000,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "k",
@@ -401,7 +441,9 @@
           "idle_rpm": 600,
           "max_rpm": 2000,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         }
       ]
     },
@@ -422,7 +464,9 @@
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "hybrid",
-          "battery_kwh": 90
+          "battery_kwh": 90,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "1848t",
@@ -435,7 +479,9 @@
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "3543m",
@@ -448,7 +494,9 @@
           "idle_rpm": 600,
           "max_rpm": 2000,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         }
       ]
     },
@@ -469,7 +517,9 @@
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "pro-935",
@@ -482,7 +532,9 @@
           "idle_rpm": 650,
           "max_rpm": 2300,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "levend",
@@ -495,7 +547,9 @@
           "idle_rpm": 0,
           "max_rpm": 10000,
           "powertrain": "electric",
-          "battery_kwh": 180
+          "battery_kwh": 180,
+          "image": null,
+          "image_credit": null
         }
       ]
     },
@@ -516,7 +570,9 @@
           "idle_rpm": 550,
           "max_rpm": 1900,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "forward",
@@ -529,7 +585,9 @@
           "idle_rpm": 650,
           "max_rpm": 2300,
           "powertrain": "diesel",
-          "battery_kwh": 2.4
+          "battery_kwh": 2.4,
+          "image": null,
+          "image_credit": null
         },
         {
           "id": "npr",
@@ -542,9 +600,17 @@
           "idle_rpm": 0,
           "max_rpm": 10000,
           "powertrain": "electric",
-          "battery_kwh": 180
+          "battery_kwh": 180,
+          "image": null,
+          "image_credit": null
         }
       ]
     }
-  ]
+  ],
+  "images": {
+    "aciklama": "Her model icin istege bagli gorsel. 'image' alani frontend kokune gore bir yoldur (ornek: 'img/mercedes-benz-actros.jpg'). Dosya bulunamazsa arayuz otomatik olarak yerlesik SVG cizimine doner.",
+    "dizin": "frontend/img/",
+    "telif_uyarisi": "Buraya yalnizca kullanim hakkina sahip oldugunuz gorselleri koyun. Uretici sitelerindeki basin fotograflari telif hakkiyla korunur.",
+    "atif_alani": "image_credit - gorselin kaynagi ve lisansi (CC gorsellerde zorunlu)"
+  }
 }

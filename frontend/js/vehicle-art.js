@@ -1,10 +1,16 @@
 /* =========================================================================
-   Arac gorselleri - satir ici SVG uretici.
+   Arac gorselleri.
 
-   Dis kaynaga (Unsplash vb.) bagimli kalinmaz: konteyner icinde, internet
-   olmadan ve siki bir CSP altinda da calismasi gerektigi icin her arac
-   gorseli segmentine gore yerinde cizilir. Marka rengi kabin ve detaylarda
-   kullanilir, boylece 30 aracin her biri ayirt edilebilir olur.
+   Iki kaynak desteklenir:
+
+     1. Gercek gorsel - aracin vehicles.json tanimindaki "image" alani doluysa
+        (ornek: "img/mercedes-benz-actros.jpg") o dosya gosterilir.
+     2. Yerlesik SVG cizimi - "image" bos ise ya da dosya yuklenemezse aracin
+        segmentine gore yerinde cizilen siluet kullanilir.
+
+   Varsayilan SVG'dir; boylece proje hicbir dis kaynaga bagimli olmadan,
+   internet olmadan ve siki bir CSP altinda da calisir. Gorsel eklemek icin
+   frontend/img/README.md dosyasina bakin.
    ========================================================================= */
 (function (global) {
   "use strict";
@@ -122,13 +128,17 @@
 
   /* ------------------------------------------------------------ rozet */
 
-  function powertrainBadge(powertrain) {
-    const style = {
-      electric: { fill: "#30d158", label: "EV" },
-      hybrid: { fill: "#0a84ff", label: "HEV" },
-      diesel: { fill: "#7d8590", label: "D" },
-    }[powertrain] || { fill: "#7d8590", label: "D" };
+  const POWERTRAIN = {
+    electric: { fill: "#30d158", label: "EV" },
+    hybrid: { fill: "#0a84ff", label: "HEV" },
+    diesel: { fill: "#7d8590", label: "D" },
+  };
 
+  const powertrainStyle = (p) => POWERTRAIN[p] || POWERTRAIN.diesel;
+
+  /** SVG icine gomulen rozet. */
+  function powertrainBadge(powertrain) {
+    const style = powertrainStyle(powertrain);
     return `
       <g transform="translate(268, 8)">
         <rect width="44" height="18" rx="9" fill="${style.fill}" opacity=".92" />
@@ -137,27 +147,90 @@
       </g>`;
   }
 
+  /** Fotograf uzerine bindirilen HTML rozeti. */
+  function badgeElement(powertrain) {
+    const style = powertrainStyle(powertrain);
+    return `<span class="art-badge" style="background:${style.fill}">${style.label}</span>`;
+  }
+
+  const escapeAttr = (value) =>
+    String(value == null ? "" : value)
+      .replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
   /* ------------------------------------------------------------ genel API */
 
-  /**
-   * Arac icin satir ici SVG uretir.
-   * @param {object} vehicle - /api/vehicles ciktisindaki arac tanimi
-   * @param {object} [options] - { badge: bool }
-   */
-  function vehicleArt(vehicle, options) {
+  /** Aracin segmentine gore yerinde cizilen SVG silueti. */
+  function drawing(vehicle, options) {
     const opts = options || {};
     const body = BODY_BY_SEGMENT[vehicle.segment] || "box";
     const draw = BODIES[body] || BODIES.box;
     const badge = opts.badge === false ? "" : powertrainBadge(vehicle.powertrain);
 
     return `<svg class="vehicle-art" viewBox="${VIEWBOX}" role="img"
-      aria-label="${vehicle.display_name} temsili gorsel" preserveAspectRatio="xMidYMid meet">
+      aria-label="${escapeAttr(vehicle.display_name)} temsili gorsel"
+      preserveAspectRatio="xMidYMid meet">
       ${draw(vehicle.color)}
       ${badge}
     </svg>`;
   }
 
+  /**
+   * Gercek gorsel etiketi. Yuklenemezse bindFallbacks() bunu SVG ile degistirir;
+   * bu yuzden geri donus icin gereken veriler data-* alanlarinda tasinir.
+   */
+  function photo(vehicle, options) {
+    const opts = options || {};
+    const withBadge = opts.badge !== false;
+    return `<img class="vehicle-art vehicle-art--photo"
+      src="${escapeAttr(vehicle.image)}"
+      alt="${escapeAttr(vehicle.display_name)}"
+      loading="lazy" decoding="async"
+      data-segment="${escapeAttr(vehicle.segment)}"
+      data-color="${escapeAttr(vehicle.color)}"
+      data-powertrain="${escapeAttr(vehicle.powertrain)}"
+      data-name="${escapeAttr(vehicle.display_name)}"
+      data-badge="${withBadge}" />${withBadge ? badgeElement(vehicle.powertrain) : ""}`;
+  }
+
+  /**
+   * Arac gorselini uretir: "image" alani doluysa fotograf, degilse SVG cizim.
+   * @param {object} vehicle - /api/vehicles ciktisindaki arac tanimi
+   * @param {object} [options] - { badge: bool }
+   */
+  function vehicleArt(vehicle, options) {
+    return vehicle && vehicle.image ? photo(vehicle, options) : drawing(vehicle, options);
+  }
+
+  /**
+   * Yuklenemeyen fotograflari sessizce SVG cizime dondurur.
+   * Satir ici onerror yerine dinleyici kullanilir; boylece siki bir CSP
+   * altinda da calisir. Kart/panel her yeniden olusturuldugunda cagrilir.
+   */
+  function bindFallbacks(root) {
+    (root || document).querySelectorAll("img.vehicle-art--photo").forEach((img) => {
+      if (img.dataset.fallbackBound) return;
+      img.dataset.fallbackBound = "1";
+      img.addEventListener("error", () => {
+        const vehicle = {
+          segment: img.dataset.segment,
+          color: img.dataset.color,
+          powertrain: img.dataset.powertrain,
+          display_name: img.dataset.name,
+        };
+        const withBadge = img.dataset.badge !== "false";
+        // Fotografa ait HTML rozeti kaldirilir; SVG kendi rozetini tasir.
+        const badge = img.parentElement && img.parentElement.querySelector(".art-badge");
+        if (badge) badge.remove();
+        img.insertAdjacentHTML("afterend", drawing(vehicle, { badge: withBadge }));
+        img.remove();
+      }, { once: true });
+    });
+  }
+
   vehicleArt.bodyType = (vehicle) => BODY_BY_SEGMENT[vehicle.segment] || "box";
+  vehicleArt.drawing = drawing;
+  vehicleArt.bindFallbacks = bindFallbacks;
 
   global.J1939VehicleArt = vehicleArt;
 })(window);
