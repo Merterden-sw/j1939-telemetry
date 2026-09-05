@@ -1,16 +1,18 @@
 # J1939 Telemetri Kontrol Paneli
 
-SAE J1939 standardina uygun bes farkli mesaji (hiz, gaz pedali, vites, fren
-pedali, batarya) gercek zamanli ureten, 30 araclik bir filoyu simule eden ve
-WebSocket uzerinden canli izlenip kontrol edilebilen Docker tabanli sistem.
-Arayuzde her arac icin gorsel kart, dijital gostergeler ve **Web Audio API ile
-sentezlenen dinamik motor sesi** bulunur.
+SAE J1939 standardina uygun dokuz farkli mesaji (hiz, gaz pedali, vites, fren
+pedali, batarya, ariza kodlari, konum, motor saati, mesafe) gercek zamanli
+ureten, 30 araclik bir filoyu simule eden ve WebSocket uzerinden canli izlenip
+kontrol edilebilen Docker tabanli bir Fleet Telematics platformu. Arayuzde her
+arac icin gercek/gorsel kart, canli harita, ariza paneli, surus skoru,
+dijital gostergeler ve **Web Audio API ile sentezlenen dinamik motor sesi**
+bulunur.
 
 ```
 ┌──────────────────┐   WS /ws (10 Hz)   ┌────────────────────────┐
 │    frontend      │ ←────────────────→ │   backend_telemetry    │
 │ nginx + vanilla  │   REST /api/*      │ FastAPI + simulator    │
-│ JS + Web Audio   │ ←────────────────→ │ 30 arac × 5 PGN        │
+│ JS + Leaflet     │ ←────────────────→ │ 30 arac × 9 PGN        │
 └──────────────────┘                    └────────────────────────┘
         :8080                                     :8000
 ```
@@ -50,9 +52,15 @@ Ardindan `http://localhost:8081/?api=http://localhost:8000` adresini acin.
 | 61445 | `0xF005` | ETC2 | Electronic Transmission Controller 2 | 3 | 100 ms |
 | 61441 | `0xF001` | EBC1 | Electronic Brake Controller 1 | 6 | 100 ms |
 | 64923 | `0xFD9B` | HVBATT | Yuksek gerilim batarya paketi | 6 | 1000 ms |
+| 65226 | `0xFECA` | DM1 | Active Diagnostic Trouble Codes (basitlestirilmis) | 6 | 1000 ms |
+| 65267 | `0xFEF3` | VEP1 | Vehicle Position (Latitude/Longitude) | 6 | 1000 ms |
+| 65253 | `0xFEE5` | HOURS | Engine Hours, Revolutions | 6 | 5000 ms |
+| 65248 | `0xFEE0` | VDHR | High Resolution Vehicle Distance | 6 | 1000 ms |
 
 Tumu **PDU2** (yayin) tipindedir: PF ≥ 240 oldugu icin PS alani hedef adres
-degil, grup uzantisidir.
+degil, grup uzantisidir. DM1 gercek J1939-73'te coklu-cerceve (BAM) tasinir;
+bu simulator basitlestirme yapip tek DTC'yi sabit 8 byte'a sigdirir, tam
+ariza listesi WS/REST JSON govdesinde (`active_dtcs`) ayrica tasinir.
 
 ### 29-bit Genisletilmis Tanimlayici (J1939-21)
 
@@ -161,7 +169,7 @@ Kod karsiligi: [`backend/app/j1939/`](backend/app/j1939/)
 ### Filo Veri Modeli
 
 10 marka × 3 model = **30 arac**, her birine benzersiz bir kaynak adres
-(`0x00`–`0x1D`) atanmistir. Her arac icin bes PGN'in tanimlayicisi onceden
+(`0x00`–`0x1D`) atanmistir. Her arac icin dokuz PGN'in tanimlayicisi onceden
 hesaplanir. Tanim: [`backend/data/vehicles.json`](backend/data/vehicles.json)
 
 ```json
@@ -185,7 +193,7 @@ kismen dolar.
 | Modul | Sorumluluk |
 |---|---|
 | `app/j1939/core.py` | CAN ID kurulumu, bit paketleme, SPN olcekleme, cerceve nesnesi |
-| `app/j1939/messages.py` | Bes PGN'in kurucu/cozucu fonksiyonlari ve kayit defteri |
+| `app/j1939/messages.py` | Dokuz PGN'in kurucu/cozucu fonksiyonlari ve kayit defteri |
 | `app/fleet.py` | `vehicles.json` okuma, kaynak adres benzersizlik dogrulamasi |
 | `app/simulator.py` | 100 ms dongu, arac dinamigi, PGN bazli yayin periyotlari |
 | `app/hub.py` | WebSocket yayini; istemci basina kuyruk, yavas istemci akisi bloke etmez |
@@ -409,7 +417,7 @@ docker build --target test -t j1939/backend:test ./backend && docker run --rm j1
 1. **backend-test** — `ruff check` + `ruff format --check` + `pytest`
 2. **frontend-check** — JavaScript sozdizimi ve varlik dogrulamasi
 3. **docker-build** — imajlarin derlenmesi, testlerin konteyner icinde kosmasi
-4. **compose-smoke-test** — `docker compose up` sonrasi bes PGN'in kodlanmasi,
+4. **compose-smoke-test** — `docker compose up` sonrasi dokuz PGN'in kodlanmasi,
    sinyal enjeksiyonu ve WebSocket akisinin uctan uca dogrulanmasi
 
 > Workflow dosyasi depo kokunde `.github/workflows/` altinda bulunmalidir.
@@ -462,7 +470,7 @@ j1939-telemetry/
 │   ├── index.html
 │   ├── css/styles.css
 │   ├── js/{api,socket,vehicle-art,audio,ui,app}.js
-│   ├── img/                  # istege bagli arac gorselleri (bos)
+│   ├── img/brands/           # 30 aracin gercek gorselleri (Wikimedia + resmi siteler)
 │   ├── nginx.conf
 │   └── Dockerfile
 ├── .github/workflows/main.yml

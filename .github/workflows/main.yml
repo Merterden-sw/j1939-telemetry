@@ -178,13 +178,15 @@ jobs:
             "import json,sys; print(len(json.load(sys.stdin)['states']))")
           test "$count" = "30"
 
-          echo "--- 5 mesaj tanimli olmali ---"
+          echo "--- 9 mesaj tanimli olmali ---"
           curl -fsS http://localhost:8000/api/j1939/messages | python3 -c "
           import json,sys
           m = {x['acronym']: (x['pgn'], x['pgn_hex']) for x in json.load(sys.stdin)['messages']}
           beklenen = {'CCVS1': (65265, '0xFEF1'), 'EEC2': (61443, '0xF003'),
                       'ETC2': (61445, '0xF005'), 'EBC1': (61441, '0xF001'),
-                      'HVBATT': (64923, '0xFD9B')}
+                      'HVBATT': (64923, '0xFD9B'), 'DM1': (65226, '0xFECA'),
+                      'VEP1': (65267, '0xFEF3'), 'HOURS': (65253, '0xFEE5'),
+                      'VDHR': (65248, '0xFEE0')}
           assert m == beklenen, m
           print('  PGN katalogu dogru:', ', '.join(m))"
 
@@ -241,7 +243,7 @@ jobs:
                   snapshot = json.loads(await ws.recv())
                   assert snapshot["type"] == "snapshot", snapshot["type"]
                   assert len(snapshot["states"]) == 30
-                  assert len(snapshot["meta"]["messages"]) == 5
+                  assert len(snapshot["meta"]["messages"]) == 9
 
                   await ws.send(json.dumps(
                       {"type": "subscribe", "vehicle_ids": ["volvo-fh16"]}))
@@ -260,7 +262,7 @@ jobs:
                       row = next((r for r in message["t"] if r[0] == "volvo-fh16"), None)
                       if row and abs(row[1] - 75) < 2:
                           hiz_ok = True
-                      if hiz_ok and len(gorulen) == 5:
+                      if hiz_ok and len(gorulen) >= 9:
                           print(f"Telemetri dogrulandi: {row[1]} km/h, "
                                 f"vites {row[4]}{row[5]}, SOC %{row[7]}")
                           print(f"Gelen PGN'ler: {', '.join(sorted(gorulen))}")
