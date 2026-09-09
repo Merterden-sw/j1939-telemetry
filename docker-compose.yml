@@ -21,6 +21,8 @@ services:
       CORS_ORIGINS: "*"
     ports:
       - "8000:8000"               # dogrudan API/Swagger erisimi (/docs)
+    volumes:
+      - uploaded_images:/app/uploads   # Arac Ekle panelinden yuklenen gorseller
     networks:
       - can_net
     healthcheck:
@@ -54,3 +56,6 @@ networks:
   can_net:
     driver: bridge
     name: j1939_can_net
+
+volumes:
+  uploaded_images:

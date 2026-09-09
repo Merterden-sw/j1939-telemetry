@@ -1,5 +1,7 @@
 """Filo telematik ozellikleri: DM1 ariza tetikleme, konum, mesafe, arac ekleme."""
 
+import base64
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -138,6 +140,35 @@ class TestTelematicsEndpoints:
 
         listing = client.get("/api/vehicles/test-brand-z1")
         assert listing.status_code == 200
+
+    def test_add_vehicle_with_image_is_served_back(self, client):
+        # 1x1 kirmizi piksel PNG - gercek bir gorsel yukleme senaryosunu tam
+        # olarak tetikler (backend/frontend ayri container oldugu icin
+        # yuklenen dosya /uploads uzerinden servis edilmeli).
+        png_1x1 = (
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY"
+            "42YAAAAASUVORK5CYII="
+        )
+        response = client.post(
+            "/api/fleet/vehicles",
+            json={
+                "brand_id": "test-brand",
+                "brand": "Test Brand",
+                "model_id": "img1",
+                "model": "IMG1",
+                "segment": "Ozel",
+                "max_speed_kmh": 100,
+                "power_hp": 300,
+                "image_data_url": f"data:image/png;base64,{png_1x1}",
+            },
+        )
+        assert response.status_code == 201
+        vehicle = response.json()["vehicle"]
+        assert vehicle["image"] == "uploads/test-brand-img1.jpg"
+
+        served = client.get(f"/{vehicle['image']}")
+        assert served.status_code == 200
+        assert served.content == base64.b64decode(png_1x1)
 
     def test_ws_fault_commands(self, client):
         with client.websocket_connect("/ws") as ws:

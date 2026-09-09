@@ -11,6 +11,9 @@ test-results.xml
 # Ortam
 .env
 
+# Calisma zamaninda yuklenen arac gorselleri (yerel gelistirme/test)
+backend/uploads/
+
 # Isletim sistemi / editor
 .DS_Store
 .idea/

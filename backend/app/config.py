@@ -46,6 +46,7 @@ class Settings:
     cors_origins: str = os.getenv("CORS_ORIGINS", "*")
     fleet_file: Path = Path(os.getenv("FLEET_FILE", str(BASE_DIR / "data" / "vehicles.json")))
     log_buffer_size: int = _env_int("LOG_BUFFER_SIZE", 500)
+    upload_dir: Path = Path(os.getenv("UPLOAD_DIR", str(BASE_DIR / "uploads")))
 
     @property
     def tick_seconds(self) -> float:

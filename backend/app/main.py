@@ -11,11 +11,11 @@ import base64
 import logging
 import time
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .fleet import build_vehicle, load_fleet
@@ -163,6 +163,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Arac Ekle panelinden yuklenen gorseller: backend ve frontend ayri
+# container'lar oldugu icin dogrudan dosya sistemi paylasimi mumkun degil;
+# bu dizin nginx tarafindan /uploads/ altinda proxy'lenir (bkz. nginx.conf).
+UPLOAD_DIR = settings.upload_dir
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 @app.exception_handler(SimulatorError)
@@ -364,9 +371,7 @@ async def add_vehicle(body: AddVehicleRequest) -> dict:
     if body.image_data_url and body.image_data_url.startswith("data:image/"):
         try:
             _, encoded = body.image_data_url.split(",", 1)
-            img_dir = Path(__file__).resolve().parent.parent.parent / "frontend" / "img" / "brands"
-            img_dir.mkdir(parents=True, exist_ok=True)
-            (img_dir / f"{vehicle.id}.jpg").write_bytes(base64.b64decode(encoded))
+            (UPLOAD_DIR / f"{vehicle.id}.jpg").write_bytes(base64.b64decode(encoded))
             vehicle = build_vehicle(
                 brand_id=body.brand_id,
                 brand=body.brand,
@@ -381,7 +386,7 @@ async def add_vehicle(body: AddVehicleRequest) -> dict:
                 powertrain=body.powertrain,
                 gear_count=body.gear_count,
                 battery_kwh=body.battery_kwh,
-                image=f"img/brands/{vehicle.id}.jpg",
+                image=f"uploads/{vehicle.id}.jpg",
             )
             fleet.replace_vehicle(vehicle)
         except Exception:

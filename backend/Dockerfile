@@ -17,6 +17,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY data ./data
 
+# Calisma zamaninda yuklenen arac gorselleri (Arac Ekle paneli) buraya yazilir;
+# docker-compose bu dizini frontend ile paylasilan bir volume'e baglar.
+RUN mkdir -p /app/uploads
+
 # Kok olmayan kullanici
 RUN useradd --create-home --uid 10001 telemetry \
     && chown -R telemetry:telemetry /app
