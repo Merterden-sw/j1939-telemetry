@@ -10,7 +10,16 @@
     updateGauge, updateReadouts, appendLogRow, renderFrameTable, updateFrameRow,
     switchTab, updateTelematicsReadouts, updateMap, invalidateMapSize, renderDtcList,
     updateScorePanel, updateMaintenancePanel, openLightbox, closeLightbox,
+    SIGNAL_PANELS, renderSignalPanel, updateSignalPanel, renderWheelGrid, updateWheelGrid,
   } = global.J1939Ui;
+
+  // Sistem sekmeleri: sekme adi -> arac durumundaki sinyal sozlugunun anahtari
+  const SIGNAL_TABS = {
+    engine: "engine",
+    transmission: "transmission",
+    brakes: "brakes",
+    ambient: "ambient",
+  };
 
   const LOG_MAX_ROWS = 300;
   const LOG_ALL_EVERY_N_TICKS = 10; // tum filo modunda saniyede ~1 tur
@@ -39,6 +48,8 @@
   const cardRefs = new Map();
   let monitorRefs = new Map();
   let frameRefs = new Map();
+  const signalRefs = new Map(); // sekme adi -> sinyal hucresi eslemesi
+  let wheelRefs = null;
 
   const socket = new global.J1939Socket(global.J1939Api.WS_URL);
   const audio = new global.J1939EngineAudio();
@@ -182,6 +193,28 @@
         return `fren %${fmt(s.spn_521_brake_pedal_position_pct, 0)}`;
       case "HVBATT":
         return `SOC %${fmt(s.spn_5464_state_of_charge_pct, 0)}`;
+      case "EEC1":
+        return `${fmt(s.spn_190_engine_speed_rpm, 0)} rpm · tork %${fmt(s.spn_513_actual_engine_torque_pct, 0)}`;
+      case "ETC1":
+        return `cikis ${fmt(s.spn_191_output_shaft_rpm, 0)} rpm`;
+      case "EBC2":
+        return `on aks ${fmt(s.spn_904_front_axle_speed_kmh)} km/h`;
+      case "LFE1":
+        return `${fmt(s.spn_183_fuel_rate_lph, 1)} L/h · ${fmt(s.spn_184_instant_fuel_economy_kmpl, 1)} km/L`;
+      case "ET1":
+        return `su ${fmt(s.spn_110_coolant_temp_c, 0)}°C · yag ${fmt(s.spn_175_oil_temp_c, 0)}°C`;
+      case "EFLP1":
+        return `yag ${fmt(s.spn_100_oil_pressure_kpa, 0)} kPa`;
+      case "IC1":
+        return `boost ${fmt(s.spn_102_boost_pressure_kpa, 0)} kPa · egzoz ${fmt(s.spn_173_exhaust_gas_temp_c, 0)}°C`;
+      case "AMB":
+        return `dis ${fmt(s.spn_171_ambient_air_temp_c, 1)}°C`;
+      case "DD":
+        return `yakit %${fmt(s.spn_96_fuel_level_pct, 0)}`;
+      case "CCSS":
+        return `cruise ${fmt(s.spn_1086_cruise_low_limit_kmh, 0)}-${fmt(s.spn_1085_cruise_high_limit_kmh, 0)} km/h`;
+      case "HOURS":
+        return `${fmt(s.spn_247_engine_hours, 0)} h`;
       default:
         return "";
     }
@@ -330,6 +363,19 @@
       el("soh-slider").value = String(Math.round(vehicleState.soh_pct));
     }
 
+    // Sistem sekmelerindeki enjeksiyon kontrolleri
+    const ambient = (vehicleState.ambient || {}).ambient_air_temp_c;
+    if (active !== el("ambient-slider") && ambient !== undefined) {
+      el("ambient-slider").value = String(Math.round(ambient));
+      el("ambient-value").textContent = `${fmt(ambient, 0)} °C`;
+    }
+    const fuel = (vehicleState.ambient || {}).fuel_level_pct;
+    if (active !== el("fuel-slider") && fuel !== undefined) {
+      el("fuel-slider").value = String(Math.round(fuel));
+      el("fuel-value").textContent = `${fmt(fuel, 0)}%`;
+    }
+    el("tg-trailer").classList.toggle("is-on", Boolean((vehicleState.brakes || {}).trailer_connected));
+
     const gearSelect = el("gear-select");
     if (document.activeElement !== gearSelect) {
       gearSelect.value = vehicleState.gear_auto
@@ -394,6 +440,15 @@
 
         if (state.activeTab === "location") {
           updateMap(vehicleState.latitude, vehicleState.longitude, vehicle.display_name);
+        }
+
+        // Sistem sekmeleri: yalnizca goruntulenen sekme guncellenir.
+        const signalKey = SIGNAL_TABS[state.activeTab];
+        if (signalKey) {
+          updateSignalPanel(signalRefs.get(state.activeTab), vehicleState[signalKey]);
+          if (state.activeTab === "brakes") {
+            updateWheelGrid(wheelRefs, (vehicleState.brakes || {}).wheel_slip);
+          }
         }
 
         const dtcCount = (vehicleState.active_dtcs || []).length;
@@ -509,6 +564,26 @@
       }
     });
 
+    // --- ortam ve yakit (SPN 171 / 96) ---
+    el("ambient-slider").addEventListener("input", (event) => {
+      el("ambient-value").textContent = `${event.target.value} °C`;
+    });
+    el("ambient-slider").addEventListener("change", (event) => {
+      if (state.selectedId) {
+        send({ type: "set_ambient", vehicle_id: state.selectedId,
+               ambient_air_temp_c: Number(event.target.value) });
+      }
+    });
+    el("fuel-slider").addEventListener("input", (event) => {
+      el("fuel-value").textContent = `${event.target.value}%`;
+    });
+    el("fuel-slider").addEventListener("change", (event) => {
+      if (state.selectedId) {
+        send({ type: "set_fuel", vehicle_id: state.selectedId,
+               fuel_level_pct: Number(event.target.value) });
+      }
+    });
+
     // --- anahtarlar ---
     const toggle = (elementId, commandType, readState, extra) =>
       el(elementId).addEventListener("click", () => {
@@ -520,6 +595,8 @@
     toggle("tg-parking", "set_parking_brake", (s) => s.parking_brake, (v) => ({ value: v }));
     toggle("tg-online", "set_online", (s) => s.online, (v) => ({ value: v }));
     toggle("tg-cruise", "set_cruise", (s) => s.cruise_active, (v) => ({ active: v }));
+    toggle("tg-trailer", "set_trailer",
+      (s) => (s.brakes || {}).trailer_connected, (v) => ({ value: v }));
 
     document.querySelectorAll("[data-mode]").forEach((button) =>
       button.addEventListener("click", () => {
@@ -707,7 +784,16 @@
     socket.connect();
   }
 
+  /** Motor / Aktarma / Fren / Ortam sekmelerinin DOM'unu bir kez kurar. */
+  function buildSignalPanels() {
+    Object.keys(SIGNAL_TABS).forEach((tab) => {
+      signalRefs.set(tab, renderSignalPanel(el(`panel-${tab}`), SIGNAL_PANELS[tab]));
+    });
+    wheelRefs = renderWheelGrid(el("wheel-grid"));
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
+    buildSignalPanels();
     bindEvents();
     bindSocket();
     requestAnimationFrame(render);

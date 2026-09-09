@@ -45,6 +45,33 @@ class BatteryCommand(BaseModel):
         return self
 
 
+class FuelCommand(BaseModel):
+    """Yakit deposu doluluklari (SPN 96 / 38 - DD)."""
+
+    fuel_level_pct: float | None = Field(None, ge=0, le=100)
+    fuel_level2_pct: float | None = Field(None, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def _en_az_biri(self) -> FuelCommand:
+        if self.fuel_level_pct is None and self.fuel_level2_pct is None:
+            raise ValueError(
+                "fuel_level_pct veya fuel_level2_pct alanlarindan en az biri verilmeli"
+            )
+        return self
+
+
+class AmbientCommand(BaseModel):
+    """Dis ortam sicakligi (SPN 171 - AMB)."""
+
+    ambient_air_temp_c: float = Field(..., ge=-40, le=60)
+
+
+class PtoCommand(BaseModel):
+    """PTO governor durumu (SPN 976 - CCVS1)."""
+
+    pto_state: int = Field(..., ge=0, le=14)
+
+
 class ModeCommand(BaseModel):
     mode: Literal["manual", "auto", "idle"]
 

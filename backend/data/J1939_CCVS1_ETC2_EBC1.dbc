@@ -1,0 +1,509 @@
+VERSION ""
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DEF_
+	EV_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_DEF_SGTYPE_VAL_
+	BA_DEF_DEF_REL_
+	BA_REL_
+	BA_DEF_REL_
+	SIG_GROUP_
+	SIG_VALTYPE_
+
+BS_:
+
+BU_: Vector__XXX Engine Transmission Brakes Body Instrument
+
+BO_ 2566843902 EEC1: 8 Engine
+ SG_ EngTrqModeCode : 0|4@1+ (1,0) [0|14] "" Vector__XXX
+ SG_ DriverDemandEngTrq : 8|8@1+ (1,-125) [-125|125] "%" Vector__XXX
+ SG_ ActualEngTorque : 16|8@1+ (1,-125) [-125|125] "%" Vector__XXX
+ SG_ EngSpeed : 24|16@1+ (0.125,0) [0|8031.875] "rpm" Vector__XXX
+ SG_ SrcAddrPrimEngCtrl : 40|8@1+ (1,0) [0|250] "" Vector__XXX
+ SG_ EngStarterMode : 48|4@1+ (1,0) [0|14] "" Vector__XXX
+ SG_ EngDemandTorque : 52|8@1+ (1,-125) [-125|125] "%" Vector__XXX
+
+BO_ 2566843648 EEC2: 8 Engine
+ SG_ AccelPedal1LowIdleSwitch : 0|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ AccelPedalPos1 : 8|8@1+ (0.4,0) [0|100] "%" Vector__XXX
+ SG_ EngPercentLoadAtCurSpd : 16|8@1+ (1,0) [0|250] "%" Vector__XXX
+ SG_ AccelPedal2LowIdleSwitch : 24|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ AccelPedalPos2 : 32|8@1+ (0.4,0) [0|100] "%" Vector__XXX
+ SG_ ActMaxAvailEngTorque : 40|8@1+ (1,0) [0|250] "%" Vector__XXX
+ SG_ EstEngParasiticLossesPercent : 48|8@1+ (1,0) [0|250] "%" Vector__XXX
+
+BO_ 2566844926 CCVS1: 8 Vehicle
+ SG_ WheelBasedVehicleSpeed : 8|16@1+ (0.00390625,0) [0|250.996] "km/h" Vector__XXX
+ SG_ CruiseCtrlActive : 24|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ CruiseCtrlEnableSwitch : 25|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ BrakeSwitch : 26|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ ClutchSwitch : 27|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ CruiseCtrlSetSwitch : 28|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ CruiseCtrlCoastSwitch : 29|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ CruiseCtrlResumeSwitch : 30|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ CruiseCtrlAccelSwitch : 31|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ CruiseCtrlSetSpeed : 32|8@1+ (0.40625,0) [0|102.3] "km/h" Vector__XXX
+ SG_ PTOGovernorState : 40|4@1+ (1,0) [0|14] "" Vector__XXX
+ SG_ CruiseCtrlHighSetLimit : 44|8@1+ (0.40625,0) [0|102.3] "km/h" Vector__XXX
+ SG_ CruiseCtrlLowSetLimit : 52|8@1+ (0.40625,0) [0|102.3] "km/h" Vector__XXX
+
+BO_ 2566844670 ETC2: 8 Transmission
+ SG_ TransmissionSelectedGear : 0|8@1- (1,-125) [-125|125] "" Vector__XXX
+ SG_ TransActualGearRatio : 8|16@1+ (0.001,0) [0|64.255] "" Vector__XXX
+ SG_ TransmissionCurrentGear : 24|8@1- (1,-125) [-125|125] "" Vector__XXX
+ SG_ TransmissionRangeSelected : 32|4@1+ (1,0) [0|14] "" Vector__XXX
+ SG_ TransmissionRangeAttained : 36|4@1+ (1,0) [0|14] "" Vector__XXX
+ SG_ MomEngMaxPowerEnable : 40|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ PercentClutchSlip : 42|8@1+ (0.4,0) [0|100] "%" Vector__XXX
+ SG_ MomEngMaxOverspeedEnable : 50|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ ProgressiveShiftDisable : 52|2@1+ (1,0) [0|3] "" Vector__XXX
+
+BO_ 2566844414 EBC1: 8 Brakes
+ SG_ ASREngineCtrlActive : 0|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ ASRBrakeCtrlActive : 2|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ ABSActive : 4|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ EBSBrakeSwitch : 6|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ BrakePedalPosition : 8|8@1+ (0.4,0) [0|100] "%" Vector__XXX
+ SG_ ABSOffRoadSwitch : 16|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ ASROffRoadSwitch : 18|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ ASRHillHolderSwitch : 20|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ TrailerABSStatus : 22|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ EBSRedWarningSignal : 24|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ ABSFullyOperational : 26|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ EBSAmberWarningSignal : 28|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ ATCASRInformationSignal : 30|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ SrcAddrCtrlForBrakeCtrl : 32|8@1+ (1,0) [0|250] "" Vector__XXX
+ SG_ TotalBrakeDemandFdn : 40|8@1+ (0.4,0) [0|100] "%" Vector__XXX
+ SG_ FoundationBrakesUse : 48|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ HaltBrakeSwitch : 50|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ TrailerConnected : 52|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ HaltBrakeMode : 54|2@1+ (1,0) [0|3] "" Vector__XXX
+
+BO_ 2566847742 EBC2: 8 Brakes
+ SG_ FrontAxleSpeed : 0|16@1+ (0.00390625,0) [0|250.996] "km/h" Vector__XXX
+ SG_ RelSpeedFrontAxleLeft : 16|8@1+ (0.0625,-7.8125) [-7.8125|7.8125] "km/h" Vector__XXX
+ SG_ RelSpeedFrontAxleRight : 24|8@1+ (0.0625,-7.8125) [-7.8125|7.8125] "km/h" Vector__XXX
+ SG_ RelSpeedRearAxle1Left : 32|8@1+ (0.0625,-7.8125) [-7.8125|7.8125] "km/h" Vector__XXX
+ SG_ RelSpeedRearAxle1Right : 40|8@1+ (0.0625,-7.8125) [-7.8125|7.8125] "km/h" Vector__XXX
+ SG_ RelSpeedRearAxle2Left : 48|8@1+ (0.0625,-7.8125) [-7.8125|7.8125] "km/h" Vector__XXX
+ SG_ RelSpeedRearAxle2Right : 56|8@1+ (0.0625,-7.8125) [-7.8125|7.8125] "km/h" Vector__XXX
+
+BO_ 2566844158 ETC1: 8 Transmission
+ SG_ TransmissionShiftActive : 0|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ TorqueConverterLockup : 2|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ TransmissionDrivelineEngaged : 4|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ TransmissionOutputShaftSpeed : 8|16@1+ (0.125,0) [0|8031.875] "rpm" Vector__XXX
+ SG_ PercentClutchSlipETC1 : 24|8@1+ (0.4,0) [0|100] "%" Vector__XXX
+ SG_ TransmissionInputShaftSpeed : 32|16@1+ (0.125,0) [0|8031.875] "rpm" Vector__XXX
+ SG_ SrcAddrCtrlForTransCtrl : 48|8@1+ (1,0) [0|250] "" Vector__XXX
+ SG_ TransmissionMode1 : 56|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ TransmissionMode2 : 58|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ TransmissionMode3 : 60|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ TransmissionMode4 : 62|2@1+ (1,0) [0|3] "" Vector__XXX
+
+BO_ 2566851838 LFE1: 8 Engine
+ SG_ EngFuelRate : 0|16@1+ (0.05,0) [0|3276.75] "L/h" Vector__XXX
+ SG_ EngInstFuelEcon : 16|16@1+ (0.001953125,0) [0|125.5] "km/L" Vector__XXX
+ SG_ EngAverageFuelEcon : 32|16@1+ (0.001953125,0) [0|125.5] "km/L" Vector__XXX
+ SG_ EngThrottleValvePos : 48|8@1+ (0.4,0) [0|100] "%" Vector__XXX
+
+BO_ 2566850046 AMB: 8 Body
+ SG_ BarometricPressure : 0|8@1+ (0.5,0) [0|125] "kPa" Vector__XXX
+ SG_ CabInteriorTemp : 8|16@1+ (0.03125,-273) [-273|1735] "deg C" Vector__XXX
+ SG_ AmbientAirTemp : 24|16@1+ (0.03125,-273) [-273|1735] "deg C" Vector__XXX
+ SG_ AirInletTemp : 40|8@1+ (1,-40) [-40|210] "deg C" Vector__XXX
+ SG_ RoadSurfaceTemp : 48|16@1+ (0.03125,-273) [-273|1735] "deg C" Vector__XXX
+
+BO_ 2566847486 IC1: 8 Engine
+ SG_ ParticulateTrapDiffPress : 0|16@1+ (0.05,0) [0|3276.75] "kPa" Vector__XXX
+ SG_ BoostPressure : 16|8@1+ (2,0) [0|500] "kPa" Vector__XXX
+ SG_ IntakeManifoldTemp : 24|8@1+ (1,-40) [-40|210] "deg C" Vector__XXX
+ SG_ AirFilterDiffPressure : 32|8@1+ (0.05,0) [0|12.5] "kPa" Vector__XXX
+ SG_ ExhaustGasTemp : 40|16@1+ (0.03125,-273) [-273|1735] "deg C" Vector__XXX
+ SG_ CoolantFilterDiffPressure : 56|8@1+ (0.5,0) [0|125] "kPa" Vector__XXX
+
+BO_ 2566844158 VD: 8 Vehicle
+ SG_ TripDistance : 0|32@1+ (0.125,0) [0|526385151.875] "km" Vector__XXX
+ SG_ TotalVehicleDistance : 32|32@1+ (0.125,0) [0|526385151.875] "km" Vector__XXX
+
+BO_ 2566851326 ET1: 8 Engine
+ SG_ EngCoolantTemp : 0|8@1+ (1,-40) [-40|210] "deg C" Vector__XXX
+ SG_ EngFuelTemp1 : 8|8@1+ (1,-40) [-40|210] "deg C" Vector__XXX
+ SG_ EngOilTemp1 : 16|16@1+ (0.03125,-273) [-273|1735] "deg C" Vector__XXX
+ SG_ TurboOilTemp : 32|16@1+ (0.03125,-273) [-273|1735] "deg C" Vector__XXX
+ SG_ EngCoolantLevel : 48|8@1+ (0.4,0) [0|100] "%" Vector__XXX
+ SG_ EngOilPressure : 56|8@1+ (4,0) [0|1000] "kPa" Vector__XXX
+
+BO_ 2566847230 HOURS: 8 Engine
+ SG_ TotalEngineHours : 0|32@1+ (0.05,0) [0|210554060.75] "h" Vector__XXX
+ SG_ TotalPTOHours : 32|32@1+ (0.05,0) [0|210554060.75] "h" Vector__XXX
+
+BO_ 2566844672 DD: 8 Instrument
+ SG_ WasherFluidLevel : 0|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ FuelLevel1 : 8|8@1+ (0.4,0) [0|100] "%" Vector__XXX
+ SG_ SeatBeltSwitch : 16|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ LanternExtLightActual : 18|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ MaintReqLampStatus : 20|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ FuelLevel2 : 24|8@1+ (0.4,0) [0|100] "%" Vector__XXX
+ SG_ CargoAmbientTemp : 32|16@1+ (0.03125,-273) [-273|1735] "deg C" Vector__XXX
+ SG_ AxleLocation : 48|4@1+ (1,0) [0|14] "" Vector__XXX
+ SG_ AxleWeight : 52|16@1+ (0.5,0) [0|32127.5] "kg" Vector__XXX
+
+CM_ BU_ Vector__XXX "Generic CAN node / datalogger";
+CM_ BU_ Engine "Engine Control Unit - J1939 ECU";
+CM_ BU_ Transmission "Transmission Control Unit - J1939 TCU";
+CM_ BU_ Brakes "Electronic Braking System - J1939 EBS";
+CM_ BU_ Body "Body Control Module - J1939";
+CM_ BU_ Instrument "Instrument Cluster - J1939";
+
+CM_ BO_ 2566843902 "EEC1 - Electronic Engine Controller 1 | PGN: 61444 (0xF004) | Rate: 20ms";
+CM_ BO_ 2566843648 "EEC2 - Electronic Engine Controller 2 | PGN: 61443 (0xF003) | Rate: 50ms";
+CM_ BO_ 2566844926 "CCVS1 - Cruise Control/Vehicle Speed 1 | PGN: 65265 (0xFEF1) | Rate: 100ms";
+CM_ BO_ 2566844670 "ETC2 - Electronic Transmission Controller 2 | PGN: 61445 (0xF005) | Rate: 20ms";
+CM_ BO_ 2566844414 "EBC1 - Electronic Brake Controller 1 | PGN: 61441 (0xF001) | Rate: 10ms";
+CM_ BO_ 2566847742 "EBC2 - Electronic Brake Controller 2 | PGN: 64966 (0xFDC6) | Rate: 100ms";
+CM_ BO_ 2566844158 "ETC1 - Electronic Transmission Controller 1 | PGN: 61442 (0xF002) | Rate: 20ms";
+CM_ BO_ 2566851838 "LFE1 - Engine Fluid Level/Economy 1 | PGN: 65266 (0xFEF2) | Rate: 100ms";
+CM_ BO_ 2566850046 "AMB - Ambient Conditions | PGN: 65269 (0xFEF5) | Rate: 1000ms";
+CM_ BO_ 2566847486 "IC1 - Inlet/Exhaust Conditions 1 | PGN: 65270 (0xFEF6) | Rate: 500ms";
+CM_ BO_ 2566844158 "VD - Vehicle Distance | PGN: 65248 (0xFEE0) | Rate: 1000ms";
+CM_ BO_ 2566851326 "ET1 - Engine Temperature 1 | PGN: 65262 (0xFEEE) | Rate: 1000ms";
+CM_ BO_ 2566847230 "HOURS - Engine Hours, Revolutions | PGN: 65253 (0xFEE5) | Rate: 1000ms";
+CM_ BO_ 2566844672 "DD - Dash Display | PGN: 65276 (0xFEFC) | Rate: 1000ms";
+
+CM_ SG_ 2566843902 EngTrqModeCode "Engine torque mode. SPN: 899";
+CM_ SG_ 2566843902 DriverDemandEngTrq "Driver demand engine torque. Range: -125 to 125%. SPN: 512";
+CM_ SG_ 2566843902 ActualEngTorque "Actual engine torque. Range: -125 to 125%. SPN: 513";
+CM_ SG_ 2566843902 EngSpeed "Engine speed in RPM. Resolution: 0.125 rpm. SPN: 190";
+CM_ SG_ 2566843902 SrcAddrPrimEngCtrl "Source address of controlling device. SPN: 1483";
+CM_ SG_ 2566843902 EngStarterMode "Engine starter mode. SPN: 1675";
+CM_ SG_ 2566843902 EngDemandTorque "Engine demanded torque - high resolution. SPN: 2432";
+
+CM_ SG_ 2566843648 AccelPedal1LowIdleSwitch "Accelerator pedal 1 low idle switch. SPN: 558";
+CM_ SG_ 2566843648 AccelPedalPos1 "Accelerator pedal position 1 as percent. SPN: 91";
+CM_ SG_ 2566843648 EngPercentLoadAtCurSpd "Engine percent load at current speed. SPN: 92";
+CM_ SG_ 2566843648 AccelPedal2LowIdleSwitch "Accelerator pedal 2 low idle switch. SPN: 559";
+CM_ SG_ 2566843648 AccelPedalPos2 "Accelerator pedal position 2. SPN: 29";
+CM_ SG_ 2566843648 ActMaxAvailEngTorque "Actual max available engine torque. SPN: 539";
+CM_ SG_ 2566843648 EstEngParasiticLossesPercent "Estimated engine parasitic losses as percent. SPN: 1481";
+
+CM_ SG_ 2566844926 WheelBasedVehicleSpeed "Wheel-based vehicle speed. Resolution: 1/256 km/h. SPN: 84";
+CM_ SG_ 2566844926 CruiseCtrlActive "Cruise control on/off. 0=Off, 1=On. SPN: 595";
+CM_ SG_ 2566844926 CruiseCtrlEnableSwitch "Cruise control enable switch state. SPN: 596";
+CM_ SG_ 2566844926 BrakeSwitch "Brake pedal applied. 0=Not pressed, 1=Pressed. SPN: 597";
+CM_ SG_ 2566844926 ClutchSwitch "Clutch pedal applied. 0=Not pressed, 1=Pressed. SPN: 598";
+CM_ SG_ 2566844926 CruiseCtrlSetSwitch "CC Set switch state. SPN: 599";
+CM_ SG_ 2566844926 CruiseCtrlCoastSwitch "CC Coast/Decelerate switch state. SPN: 600";
+CM_ SG_ 2566844926 CruiseCtrlResumeSwitch "CC Resume switch state. SPN: 601";
+CM_ SG_ 2566844926 CruiseCtrlAccelSwitch "CC Accelerate switch state. SPN: 602";
+CM_ SG_ 2566844926 CruiseCtrlSetSpeed "Cruise control set speed. SPN: 86";
+CM_ SG_ 2566844926 PTOGovernorState "PTO governor state. SPN: 976";
+CM_ SG_ 2566844926 CruiseCtrlHighSetLimit "Upper limit speed for cruise control. SPN: 1085";
+CM_ SG_ 2566844926 CruiseCtrlLowSetLimit "Lower limit speed for cruise control. SPN: 1086";
+
+CM_ SG_ 2566844670 TransmissionSelectedGear "Gear selected by operator or auto-shift. SPN: 524";
+CM_ SG_ 2566844670 TransActualGearRatio "Actual measured gear ratio in use. SPN: 525";
+CM_ SG_ 2566844670 TransmissionCurrentGear "Currently engaged gear. SPN: 523";
+CM_ SG_ 2566844670 TransmissionRangeSelected "Selected transmission range. SPN: 526";
+CM_ SG_ 2566844670 TransmissionRangeAttained "Attained transmission range. SPN: 527";
+CM_ SG_ 2566844670 MomEngMaxPowerEnable "Momentary engine max power enable. SPN: 528";
+CM_ SG_ 2566844670 PercentClutchSlip "Measured percentage of clutch slip. SPN: 522";
+CM_ SG_ 2566844670 MomEngMaxOverspeedEnable "Momentary engine max overspeed enable. SPN: 531";
+CM_ SG_ 2566844670 ProgressiveShiftDisable "Progressive shift feature disabled. SPN: 619";
+
+CM_ SG_ 2566844414 ASREngineCtrlActive "ASR engine control active. SPN: 561";
+CM_ SG_ 2566844414 ASRBrakeCtrlActive "ASR brake control active. SPN: 562";
+CM_ SG_ 2566844414 ABSActive "ABS active flag. SPN: 563";
+CM_ SG_ 2566844414 EBSBrakeSwitch "EBS brake switch status. SPN: 1121";
+CM_ SG_ 2566844414 BrakePedalPosition "Brake pedal position as percent of full application. SPN: 521";
+CM_ SG_ 2566844414 ABSOffRoadSwitch "ABS off-road mode switch. SPN: 576";
+CM_ SG_ 2566844414 ASROffRoadSwitch "ASR off-road mode switch. SPN: 577";
+CM_ SG_ 2566844414 ASRHillHolderSwitch "ASR hill holder switch. SPN: 1238";
+CM_ SG_ 2566844414 TrailerABSStatus "Trailer ABS status signal. SPN: 1792";
+CM_ SG_ 2566844414 EBSRedWarningSignal "EBS red (stop) warning lamp signal. SPN: 1438";
+CM_ SG_ 2566844414 ABSFullyOperational "ABS fully operational status. SPN: 575";
+CM_ SG_ 2566844414 EBSAmberWarningSignal "EBS amber (warning) lamp signal. SPN: 1439";
+CM_ SG_ 2566844414 ATCASRInformationSignal "ATC/ASR information signal for driver. SPN: 1793";
+CM_ SG_ 2566844414 SrcAddrCtrlForBrakeCtrl "Source address of controlling device for brakes. SPN: 1481";
+CM_ SG_ 2566844414 TotalBrakeDemandFdn "Total brake demand from foundation brakes. SPN: 2911";
+CM_ SG_ 2566844414 FoundationBrakesUse "Indication of foundation brakes use. SPN: 4251";
+CM_ SG_ 2566844414 HaltBrakeSwitch "Halt brake switch state. SPN: 4252";
+CM_ SG_ 2566844414 TrailerConnected "Trailer connected status. SPN: 1836";
+CM_ SG_ 2566844414 HaltBrakeMode "Halt brake mode. SPN: 4253";
+
+CM_ SG_ 2566847742 FrontAxleSpeed "Front axle speed. SPN: 904";
+CM_ SG_ 2566847742 RelSpeedFrontAxleLeft "Relative speed front axle left wheel. SPN: 905";
+CM_ SG_ 2566847742 RelSpeedFrontAxleRight "Relative speed front axle right wheel. SPN: 906";
+CM_ SG_ 2566847742 RelSpeedRearAxle1Left "Relative speed rear axle 1 left wheel. SPN: 907";
+CM_ SG_ 2566847742 RelSpeedRearAxle1Right "Relative speed rear axle 1 right wheel. SPN: 908";
+CM_ SG_ 2566847742 RelSpeedRearAxle2Left "Relative speed rear axle 2 left wheel. SPN: 909";
+CM_ SG_ 2566847742 RelSpeedRearAxle2Right "Relative speed rear axle 2 right wheel. SPN: 910";
+
+CM_ SG_ 2566844158 TransmissionShiftActive "Transmission shift in process. SPN: 573";
+CM_ SG_ 2566844158 TorqueConverterLockup "Torque converter lockup engaged. SPN: 574";
+CM_ SG_ 2566844158 TransmissionDrivelineEngaged "Transmission driveline engaged. SPN: 560";
+CM_ SG_ 2566844158 TransmissionOutputShaftSpeed "Transmission output shaft speed. SPN: 191";
+CM_ SG_ 2566844158 PercentClutchSlipETC1 "Percent clutch slip ETC1. SPN: 522";
+CM_ SG_ 2566844158 TransmissionInputShaftSpeed "Transmission input shaft speed. SPN: 161";
+CM_ SG_ 2566844158 SrcAddrCtrlForTransCtrl "Source address for transmission control. SPN: 1482";
+CM_ SG_ 2566844158 TransmissionMode1 "Transmission mode 1. SPN: 523";
+CM_ SG_ 2566844158 TransmissionMode2 "Transmission mode 2. SPN: 1875";
+CM_ SG_ 2566844158 TransmissionMode3 "Transmission mode 3. SPN: 1876";
+CM_ SG_ 2566844158 TransmissionMode4 "Transmission mode 4. SPN: 1877";
+
+CM_ SG_ 2566851838 EngFuelRate "Engine fuel consumption rate. SPN: 183";
+CM_ SG_ 2566851838 EngInstFuelEcon "Instantaneous fuel economy. SPN: 184";
+CM_ SG_ 2566851838 EngAverageFuelEcon "Average fuel economy. SPN: 185";
+CM_ SG_ 2566851838 EngThrottleValvePos "Throttle valve position. SPN: 51";
+
+CM_ SG_ 2566850046 BarometricPressure "Barometric pressure. SPN: 108";
+CM_ SG_ 2566850046 CabInteriorTemp "Cab interior temperature. SPN: 170";
+CM_ SG_ 2566850046 AmbientAirTemp "Ambient air temperature. SPN: 171";
+CM_ SG_ 2566850046 AirInletTemp "Air inlet temperature. SPN: 172";
+CM_ SG_ 2566850046 RoadSurfaceTemp "Road surface temperature. SPN: 79";
+
+CM_ SG_ 2566847486 ParticulateTrapDiffPress "Particulate trap differential pressure. SPN: 81";
+CM_ SG_ 2566847486 BoostPressure "Engine turbocharger boost pressure. SPN: 102";
+CM_ SG_ 2566847486 IntakeManifoldTemp "Intake manifold temperature. SPN: 105";
+CM_ SG_ 2566847486 AirFilterDiffPressure "Air filter differential pressure. SPN: 107";
+CM_ SG_ 2566847486 ExhaustGasTemp "Exhaust gas temperature. SPN: 173";
+CM_ SG_ 2566847486 CoolantFilterDiffPressure "Coolant filter differential pressure. SPN: 112";
+
+CM_ SG_ 2566851326 EngCoolantTemp "Engine coolant temperature. SPN: 110";
+CM_ SG_ 2566851326 EngFuelTemp1 "Engine fuel temperature 1. SPN: 174";
+CM_ SG_ 2566851326 EngOilTemp1 "Engine oil temperature 1. SPN: 175";
+CM_ SG_ 2566851326 TurboOilTemp "Turbocharger oil temperature. SPN: 176";
+CM_ SG_ 2566851326 EngCoolantLevel "Engine coolant level. SPN: 111";
+CM_ SG_ 2566851326 EngOilPressure "Engine oil pressure. SPN: 100";
+
+CM_ SG_ 2566847230 TotalEngineHours "Total engine hours. SPN: 247";
+CM_ SG_ 2566847230 TotalPTOHours "Total PTO hours. SPN: 248";
+
+CM_ SG_ 2566844672 WasherFluidLevel "Windshield washer fluid level. SPN: 80";
+CM_ SG_ 2566844672 FuelLevel1 "Fuel level 1. SPN: 96";
+CM_ SG_ 2566844672 SeatBeltSwitch "Seat belt switch. SPN: 1856";
+CM_ SG_ 2566844672 LanternExtLightActual "Lantern/exterior light status. SPN: 1883";
+CM_ SG_ 2566844672 MaintReqLampStatus "Maintenance required lamp status. SPN: 1420";
+CM_ SG_ 2566844672 FuelLevel2 "Fuel level 2 (dual tank). SPN: 38";
+CM_ SG_ 2566844672 CargoAmbientTemp "Cargo ambient temperature. SPN: 414";
+CM_ SG_ 2566844672 AxleLocation "Axle location identifier. SPN: 352";
+CM_ SG_ 2566844672 AxleWeight "Axle weight. SPN: 353";
+
+BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG";
+BA_DEF_ BO_ "GenMsgCycleTime" INT 0 10000;
+BA_DEF_ BO_ "GenMsgSendType" STRING;
+BA_DEF_ BO_ "VFrameFormat" ENUM "StandardCAN" "ExtendedCAN" "J1939PGN";
+BA_DEF_ SG_ "GenSigSendType" STRING;
+BA_DEF_ SG_ "SystemSignalLongSymbol" STRING;
+BA_DEF_ SG_ "SPN" INT 0 524287;
+
+BA_DEF_DEF_ "GenMsgCycleTime" 0;
+BA_DEF_DEF_ "GenMsgSendType" "Cyclic";
+BA_DEF_DEF_ "VFrameFormat" "ExtendedCAN";
+BA_DEF_DEF_ "GenSigSendType" "Cyclic";
+BA_DEF_DEF_ "SystemSignalLongSymbol" "";
+BA_DEF_DEF_ "SPN" 0;
+
+BA_ "VFrameFormat" BO_ 2566843902 2;
+BA_ "VFrameFormat" BO_ 2566843648 2;
+BA_ "VFrameFormat" BO_ 2566844926 2;
+BA_ "VFrameFormat" BO_ 2566844670 2;
+BA_ "VFrameFormat" BO_ 2566844414 2;
+BA_ "VFrameFormat" BO_ 2566847742 2;
+BA_ "VFrameFormat" BO_ 2566844158 2;
+BA_ "VFrameFormat" BO_ 2566851838 2;
+BA_ "VFrameFormat" BO_ 2566850046 2;
+BA_ "VFrameFormat" BO_ 2566847486 2;
+BA_ "VFrameFormat" BO_ 2566851326 2;
+BA_ "VFrameFormat" BO_ 2566847230 2;
+BA_ "VFrameFormat" BO_ 2566844672 2;
+
+BA_ "GenMsgCycleTime" BO_ 2566843902 20;
+BA_ "GenMsgCycleTime" BO_ 2566843648 50;
+BA_ "GenMsgCycleTime" BO_ 2566844926 100;
+BA_ "GenMsgCycleTime" BO_ 2566844670 20;
+BA_ "GenMsgCycleTime" BO_ 2566844414 10;
+BA_ "GenMsgCycleTime" BO_ 2566847742 100;
+BA_ "GenMsgCycleTime" BO_ 2566844158 20;
+BA_ "GenMsgCycleTime" BO_ 2566851838 100;
+BA_ "GenMsgCycleTime" BO_ 2566850046 1000;
+BA_ "GenMsgCycleTime" BO_ 2566847486 500;
+BA_ "GenMsgCycleTime" BO_ 2566851326 1000;
+BA_ "GenMsgCycleTime" BO_ 2566847230 1000;
+BA_ "GenMsgCycleTime" BO_ 2566844672 1000;
+
+BA_ "SPN" SG_ 2566843902 EngTrqModeCode 899;
+BA_ "SPN" SG_ 2566843902 DriverDemandEngTrq 512;
+BA_ "SPN" SG_ 2566843902 ActualEngTorque 513;
+BA_ "SPN" SG_ 2566843902 EngSpeed 190;
+BA_ "SPN" SG_ 2566843902 SrcAddrPrimEngCtrl 1483;
+BA_ "SPN" SG_ 2566843902 EngStarterMode 1675;
+BA_ "SPN" SG_ 2566843902 EngDemandTorque 2432;
+
+BA_ "SPN" SG_ 2566843648 AccelPedal1LowIdleSwitch 558;
+BA_ "SPN" SG_ 2566843648 AccelPedalPos1 91;
+BA_ "SPN" SG_ 2566843648 EngPercentLoadAtCurSpd 92;
+BA_ "SPN" SG_ 2566843648 AccelPedal2LowIdleSwitch 559;
+BA_ "SPN" SG_ 2566843648 AccelPedalPos2 29;
+BA_ "SPN" SG_ 2566843648 ActMaxAvailEngTorque 539;
+BA_ "SPN" SG_ 2566843648 EstEngParasiticLossesPercent 1481;
+
+BA_ "SPN" SG_ 2566844926 WheelBasedVehicleSpeed 84;
+BA_ "SPN" SG_ 2566844926 CruiseCtrlActive 595;
+BA_ "SPN" SG_ 2566844926 CruiseCtrlEnableSwitch 596;
+BA_ "SPN" SG_ 2566844926 BrakeSwitch 597;
+BA_ "SPN" SG_ 2566844926 ClutchSwitch 598;
+BA_ "SPN" SG_ 2566844926 CruiseCtrlSetSwitch 599;
+BA_ "SPN" SG_ 2566844926 CruiseCtrlCoastSwitch 600;
+BA_ "SPN" SG_ 2566844926 CruiseCtrlResumeSwitch 601;
+BA_ "SPN" SG_ 2566844926 CruiseCtrlAccelSwitch 602;
+BA_ "SPN" SG_ 2566844926 CruiseCtrlSetSpeed 86;
+BA_ "SPN" SG_ 2566844926 PTOGovernorState 976;
+BA_ "SPN" SG_ 2566844926 CruiseCtrlHighSetLimit 1085;
+BA_ "SPN" SG_ 2566844926 CruiseCtrlLowSetLimit 1086;
+
+BA_ "SPN" SG_ 2566844670 TransmissionSelectedGear 524;
+BA_ "SPN" SG_ 2566844670 TransActualGearRatio 525;
+BA_ "SPN" SG_ 2566844670 TransmissionCurrentGear 523;
+BA_ "SPN" SG_ 2566844670 TransmissionRangeSelected 526;
+BA_ "SPN" SG_ 2566844670 TransmissionRangeAttained 527;
+BA_ "SPN" SG_ 2566844670 MomEngMaxPowerEnable 528;
+BA_ "SPN" SG_ 2566844670 PercentClutchSlip 522;
+BA_ "SPN" SG_ 2566844670 MomEngMaxOverspeedEnable 531;
+BA_ "SPN" SG_ 2566844670 ProgressiveShiftDisable 619;
+
+BA_ "SPN" SG_ 2566844414 ASREngineCtrlActive 561;
+BA_ "SPN" SG_ 2566844414 ASRBrakeCtrlActive 562;
+BA_ "SPN" SG_ 2566844414 ABSActive 563;
+BA_ "SPN" SG_ 2566844414 EBSBrakeSwitch 1121;
+BA_ "SPN" SG_ 2566844414 BrakePedalPosition 521;
+BA_ "SPN" SG_ 2566844414 ABSOffRoadSwitch 576;
+BA_ "SPN" SG_ 2566844414 ASROffRoadSwitch 577;
+BA_ "SPN" SG_ 2566844414 ASRHillHolderSwitch 1238;
+BA_ "SPN" SG_ 2566844414 TrailerABSStatus 1792;
+BA_ "SPN" SG_ 2566844414 EBSRedWarningSignal 1438;
+BA_ "SPN" SG_ 2566844414 ABSFullyOperational 575;
+BA_ "SPN" SG_ 2566844414 EBSAmberWarningSignal 1439;
+BA_ "SPN" SG_ 2566844414 ATCASRInformationSignal 1793;
+BA_ "SPN" SG_ 2566844414 SrcAddrCtrlForBrakeCtrl 1481;
+BA_ "SPN" SG_ 2566844414 TotalBrakeDemandFdn 2911;
+BA_ "SPN" SG_ 2566844414 FoundationBrakesUse 4251;
+BA_ "SPN" SG_ 2566844414 HaltBrakeSwitch 4252;
+BA_ "SPN" SG_ 2566844414 TrailerConnected 1836;
+BA_ "SPN" SG_ 2566844414 HaltBrakeMode 4253;
+
+BA_ "SPN" SG_ 2566847742 FrontAxleSpeed 904;
+BA_ "SPN" SG_ 2566847742 RelSpeedFrontAxleLeft 905;
+BA_ "SPN" SG_ 2566847742 RelSpeedFrontAxleRight 906;
+BA_ "SPN" SG_ 2566847742 RelSpeedRearAxle1Left 907;
+BA_ "SPN" SG_ 2566847742 RelSpeedRearAxle1Right 908;
+BA_ "SPN" SG_ 2566847742 RelSpeedRearAxle2Left 909;
+BA_ "SPN" SG_ 2566847742 RelSpeedRearAxle2Right 910;
+
+BA_ "SPN" SG_ 2566844158 TransmissionShiftActive 573;
+BA_ "SPN" SG_ 2566844158 TorqueConverterLockup 574;
+BA_ "SPN" SG_ 2566844158 TransmissionDrivelineEngaged 560;
+BA_ "SPN" SG_ 2566844158 TransmissionOutputShaftSpeed 191;
+BA_ "SPN" SG_ 2566844158 PercentClutchSlipETC1 522;
+BA_ "SPN" SG_ 2566844158 TransmissionInputShaftSpeed 161;
+BA_ "SPN" SG_ 2566844158 SrcAddrCtrlForTransCtrl 1482;
+
+BA_ "SPN" SG_ 2566851838 EngFuelRate 183;
+BA_ "SPN" SG_ 2566851838 EngInstFuelEcon 184;
+BA_ "SPN" SG_ 2566851838 EngAverageFuelEcon 185;
+BA_ "SPN" SG_ 2566851838 EngThrottleValvePos 51;
+
+BA_ "SPN" SG_ 2566850046 BarometricPressure 108;
+BA_ "SPN" SG_ 2566850046 CabInteriorTemp 170;
+BA_ "SPN" SG_ 2566850046 AmbientAirTemp 171;
+BA_ "SPN" SG_ 2566850046 AirInletTemp 172;
+BA_ "SPN" SG_ 2566850046 RoadSurfaceTemp 79;
+
+BA_ "SPN" SG_ 2566847486 ParticulateTrapDiffPress 81;
+BA_ "SPN" SG_ 2566847486 BoostPressure 102;
+BA_ "SPN" SG_ 2566847486 IntakeManifoldTemp 105;
+BA_ "SPN" SG_ 2566847486 AirFilterDiffPressure 107;
+BA_ "SPN" SG_ 2566847486 ExhaustGasTemp 173;
+BA_ "SPN" SG_ 2566847486 CoolantFilterDiffPressure 112;
+
+BA_ "SPN" SG_ 2566851326 EngCoolantTemp 110;
+BA_ "SPN" SG_ 2566851326 EngFuelTemp1 174;
+BA_ "SPN" SG_ 2566851326 EngOilTemp1 175;
+BA_ "SPN" SG_ 2566851326 TurboOilTemp 176;
+BA_ "SPN" SG_ 2566851326 EngCoolantLevel 111;
+BA_ "SPN" SG_ 2566851326 EngOilPressure 100;
+
+BA_ "SPN" SG_ 2566847230 TotalEngineHours 247;
+BA_ "SPN" SG_ 2566847230 TotalPTOHours 248;
+
+BA_ "SPN" SG_ 2566844672 WasherFluidLevel 80;
+BA_ "SPN" SG_ 2566844672 FuelLevel1 96;
+BA_ "SPN" SG_ 2566844672 SeatBeltSwitch 1856;
+BA_ "SPN" SG_ 2566844672 LanternExtLightActual 1883;
+BA_ "SPN" SG_ 2566844672 MaintReqLampStatus 1420;
+BA_ "SPN" SG_ 2566844672 FuelLevel2 38;
+BA_ "SPN" SG_ 2566844672 CargoAmbientTemp 414;
+BA_ "SPN" SG_ 2566844672 AxleLocation 352;
+BA_ "SPN" SG_ 2566844672 AxleWeight 353;
+
+VAL_ 2566843902 EngTrqModeCode 0 "Low_Idle" 1 "Pedal" 2 "Cruise_Control" 3 "PTO" 4 "Road_Speed" 5 "ASR" 6 "Transmission" 7 "ABS" 8 "Torque_Limit" 9 "High_Speed" 14 "Not_Available" ;
+VAL_ 2566843902 EngStarterMode 0 "Start_Not_Active" 1 "Starter_Active" 2 "Start_Finished" 14 "Not_Available" ;
+
+VAL_ 2566843648 AccelPedal1LowIdleSwitch 0 "Not_Pressed" 1 "Pressed" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566843648 AccelPedal2LowIdleSwitch 0 "Not_Pressed" 1 "Pressed" 2 "Error" 3 "Not_Available" ;
+
+VAL_ 2566844926 CruiseCtrlActive 0 "CC_Off" 1 "CC_On" ;
+VAL_ 2566844926 CruiseCtrlEnableSwitch 0 "Disabled" 1 "Enabled" ;
+VAL_ 2566844926 BrakeSwitch 0 "Not_Pressed" 1 "Pressed" ;
+VAL_ 2566844926 ClutchSwitch 0 "Not_Pressed" 1 "Pressed" ;
+VAL_ 2566844926 CruiseCtrlSetSwitch 0 "Not_Active" 1 "Active" ;
+VAL_ 2566844926 CruiseCtrlCoastSwitch 0 "Not_Active" 1 "Active" ;
+VAL_ 2566844926 CruiseCtrlResumeSwitch 0 "Not_Active" 1 "Active" ;
+VAL_ 2566844926 CruiseCtrlAccelSwitch 0 "Not_Active" 1 "Active" ;
+
+VAL_ 2566844670 MomEngMaxPowerEnable 0 "Disabled" 1 "Enabled" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844670 MomEngMaxOverspeedEnable 0 "Disabled" 1 "Enabled" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844670 ProgressiveShiftDisable 0 "Enabled" 1 "Disabled" 2 "Error" 3 "Not_Available" ;
+
+VAL_ 2566844414 ASREngineCtrlActive 0 "Passive" 1 "Active" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 ASRBrakeCtrlActive 0 "Passive" 1 "Active" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 ABSActive 0 "Passive" 1 "Active" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 EBSBrakeSwitch 0 "Not_Pressed" 1 "Pressed" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 ABSOffRoadSwitch 0 "Off" 1 "On" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 ASROffRoadSwitch 0 "Off" 1 "On" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 ASRHillHolderSwitch 0 "Off" 1 "On" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 TrailerABSStatus 0 "No_Trailer" 1 "ABS_Active" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 EBSRedWarningSignal 0 "No_Warning" 1 "Warning" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 ABSFullyOperational 0 "Not_Operational" 1 "Fully_Operational" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 EBSAmberWarningSignal 0 "No_Warning" 1 "Warning" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 ATCASRInformationSignal 0 "No_Info" 1 "Info_Active" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 FoundationBrakesUse 0 "Not_In_Use" 1 "In_Use" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 HaltBrakeSwitch 0 "Off" 1 "On" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 TrailerConnected 0 "No_Trailer" 1 "Connected" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844414 HaltBrakeMode 0 "Not_Active" 1 "Active" 2 "Error" 3 "Not_Available" ;
+
+VAL_ 2566844158 TransmissionShiftActive 0 "Not_Active" 1 "Active" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844158 TorqueConverterLockup 0 "Not_Locked" 1 "Locked" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844158 TransmissionDrivelineEngaged 0 "Disengaged" 1 "Engaged" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844158 TransmissionMode1 0 "Mode_Off" 1 "Mode_On" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844158 TransmissionMode2 0 "Mode_Off" 1 "Mode_On" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844158 TransmissionMode3 0 "Mode_Off" 1 "Mode_On" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844158 TransmissionMode4 0 "Mode_Off" 1 "Mode_On" 2 "Error" 3 "Not_Available" ;
+
+VAL_ 2566844672 WasherFluidLevel 0 "Low" 1 "OK" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844672 SeatBeltSwitch 0 "Not_Fastened" 1 "Fastened" 2 "Error" 3 "Not_Available" ;
+VAL_ 2566844672 MaintReqLampStatus 0 "Off" 1 "On" 2 "Error" 3 "Not_Available" ;
+

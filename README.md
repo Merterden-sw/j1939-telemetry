@@ -1,7 +1,9 @@
 # J1939 Telemetri Kontrol Paneli
 
-SAE J1939 standardina uygun dokuz farkli mesaji (hiz, gaz pedali, vites, fren
-pedali, batarya, ariza kodlari, konum, motor saati, mesafe) gercek zamanli
+SAE J1939 standardina uygun on dokuz farkli mesaji (hiz, motor torku ve devri,
+gaz/fren pedali, vites ve mil devirleri, aks hizlari, motor sicaklik ve
+basinclari, yakit tuketimi, ortam kosullari, batarya, ariza kodlari, konum,
+motor saati, mesafe) gercek zamanli
 ureten, 30 araclik bir filoyu simule eden ve WebSocket uzerinden canli izlenip
 kontrol edilebilen Docker tabanli bir Fleet Telematics platformu. Arayuzde her
 arac icin gercek/gorsel kart, canli harita, ariza paneli, surus skoru,
@@ -12,7 +14,7 @@ bulunur.
 ┌──────────────────┐   WS /ws (10 Hz)   ┌────────────────────────┐
 │    frontend      │ ←────────────────→ │   backend_telemetry    │
 │ nginx + vanilla  │   REST /api/*      │ FastAPI + simulator    │
-│ JS + Leaflet     │ ←────────────────→ │ 30 arac × 9 PGN        │
+│ JS + Leaflet     │ ←────────────────→ │ 30 arac × 19 PGN       │
 └──────────────────┘                    └────────────────────────┘
         :8080                                     :8000
 ```
@@ -48,9 +50,19 @@ Ardindan `http://localhost:8081/?api=http://localhost:8000` adresini acin.
 | PGN | Hex | Kisaltma | Mesaj | Oncelik | Periyot |
 |---|---|---|---|---|---|
 | 65265 | `0xFEF1` | CCVS1 | Cruise Control / Vehicle Speed 1 | 6 | 100 ms |
+| 65096 | `0xFE48` | CCSS | Cruise Control / Vehicle Speed Setup | 6 | 5000 ms |
+| 61444 | `0xF004` | EEC1 | Electronic Engine Controller 1 | 3 | 20 ms |
 | 61443 | `0xF003` | EEC2 | Electronic Engine Controller 2 | 3 | 50 ms |
+| 61442 | `0xF002` | ETC1 | Electronic Transmission Controller 1 | 3 | 20 ms |
 | 61445 | `0xF005` | ETC2 | Electronic Transmission Controller 2 | 3 | 100 ms |
 | 61441 | `0xF001` | EBC1 | Electronic Brake Controller 1 | 6 | 100 ms |
+| 65215 | `0xFEBF` | EBC2 | Electronic Brake Controller 2 (aks hizlari) | 6 | 100 ms |
+| 65266 | `0xFEF2` | LFE1 | Engine Fluid Level / Fuel Economy | 6 | 100 ms |
+| 65262 | `0xFEEE` | ET1 | Engine Temperature 1 | 6 | 1000 ms |
+| 65263 | `0xFEEF` | EFLP1 | Engine Fluid Level / Pressure 1 | 6 | 500 ms |
+| 65270 | `0xFEF6` | IC1 | Inlet / Exhaust Conditions 1 | 6 | 500 ms |
+| 65269 | `0xFEF5` | AMB | Ambient Conditions | 6 | 1000 ms |
+| 65276 | `0xFEFC` | DD | Dash Display | 6 | 1000 ms |
 | 64923 | `0xFD9B` | HVBATT | Yuksek gerilim batarya paketi | 6 | 1000 ms |
 | 65226 | `0xFECA` | DM1 | Active Diagnostic Trouble Codes (basitlestirilmis) | 6 | 1000 ms |
 | 65267 | `0xFEF3` | VEP1 | Vehicle Position (Latitude/Longitude) | 6 | 1000 ms |
@@ -169,7 +181,7 @@ Kod karsiligi: [`backend/app/j1939/`](backend/app/j1939/)
 ### Filo Veri Modeli
 
 10 marka × 3 model = **30 arac**, her birine benzersiz bir kaynak adres
-(`0x00`–`0x1D`) atanmistir. Her arac icin dokuz PGN'in tanimlayicisi onceden
+(`0x00`–`0x1D`) atanmistir. Her arac icin on dokuz PGN'in tanimlayicisi onceden
 hesaplanir. Tanim: [`backend/data/vehicles.json`](backend/data/vehicles.json)
 
 ```json
@@ -186,6 +198,69 @@ SPN 5464 starter akusunu temsil eder (alternator sarjda tutar); elektrikli ve
 hibritlerde surus bataryasidir ve yuke gore bosalir, frende rejenerasyonla
 kismen dolar.
 
+### DBC Uyum Notlari
+
+Mesaj setinin buyuk bolumu musteri DBC dosyasindan
+(`J1939_CCVS1_ETC2_EBC1.dbc`, 14 mesaj / 107 sinyal) alinmistir. DBC ile SAE
+J1939-71 arasindaki farklarda **standart esas alinmistir**. Onemli noktalar:
+
+**1. DBC'nin sayisal `BO_` kimlikleri kullanilmamistir.** 13 mesajin 12'sinde
+`BO_` kimliginden cozulen PGN, ayni satirin `CM_` yorumunda yazan PGN ile
+uyusmuyor; kimlikler `0xFEED`'den baslayip ardisik artiyor. Ustelik EEC1 ile
+EEC2 ayni PGN'e (65261), CCVS1 ile DD ayni PGN'e (`0xFEF1`) dusuyor ve
+`BO_ 2566844158` hem ETC1 hem VD icin iki kez tanimlanmis. Bu yuzden PGN
+degerleri `CM_` yorumlarindan alinmis, tanimlayicilar `build_can_id()` ile
+PGN + oncelik + kaynak adresten uretilmistir.
+
+| Mesaj | DBC `BO_` kimliginden cozulen | `CM_` yorumu | Kullanilan |
+|---|---|---|---|
+| CCVS1 | 65265 | 65265 | 65265 ✓ |
+| EEC1 | 65261 | 61444 | 61444 |
+| EEC2 | 65261 | 61443 | 61443 |
+| ETC1 | 65262 | 61442 | 61442 |
+| ETC2 | 65264 | 61445 | 61445 |
+| EBC1 | 65263 | 61441 | 61441 |
+| EBC2 | 65276 | 64966 | **65215** (standart EBC2) |
+| HOURS | 65274 | 65253 | 65253 |
+| DD | 65265 | 65276 | 65276 |
+
+**2. Standart lehine cozulen dort sapma.**
+
+| Konu | DBC | Uygulanan |
+|---|---|---|
+| ETC2 vites kademesi | bit 32/36'da 4-bit alanlar | SPN 162/163, bayt 5–8 ASCII |
+| PGN 65248 | VD, 0.125 km/bit | VDHR, 5 m/bit (SPN 917/918) |
+| CCVS1 SPN 86 | 0.40625 km/h/bit | 1 km/h/bit |
+| IC1 SPN 81 | 2 bayt, 0.05 kPa/bit | 1 bayt, 0.5 kPa/bit |
+
+**3. Kendi PGN'ine tasinan sinyaller.** DBC'nin yanlis mesaja koydugu uc sinyal
+grubu standart yuvalarina alinmistir; bu yuzden kayit defterinde iki ek mesaj
+vardir:
+
+- SPN 1085/1086 (cruise ust/alt limit): CCVS1 → **CCSS (65096)**
+- SPN 100/111 (yag basinci, sogutma suyu seviyesi): ET1 → **EFLP1 (65263)**
+- SPN 522 (debriyaj kaymasi): ETC2 → ETC1 (standart yuvasi)
+
+**4. Yayinlanmayan bes sinyal.** Standart bir yuvasi dogrulanamadigi icin
+bilerek disarida birakilmislardir (uydurma yerlesim eklenmemistir):
+
+| SPN | Sinyal | Gerekce |
+|---|---|---|
+| 352 / 353 | AxleLocation / AxleWeight | PGN 65258 (VW) alani; ayrica DBC'deki `52\|16` yerlesimi 8 bayta tasar (bit 68) |
+| 528 / 531 | MomEngMaxPowerEnable / MomEngMaxOverspeedEnable | DBC bunlari ETC2 bayt 6–7'ye koyar; orasi SPN 162/163 tarafindan kullanilir |
+| 619 | ProgressiveShiftDisable | ayni gerekce |
+
+**5. Yayin periyotlari.** DBC'deki 10–50 ms'lik periyotlar `transmit_rate_ms`
+alaninda oldugu gibi durur, ancak simulator varsayilan olarak 100 ms tick ile
+calisir (`SIM_TICK_MS`). `Simulator._intervals` her mesaji
+`max(1, round(periyot / tick))` tick'te bir yayinlar; yani tick'ten kisa
+periyotlarin hepsi fiilen 100 ms'de bir gonderilir. Gercek periyotlar icin
+`SIM_TICK_MS=10` verilebilir (bus yuku ~10 kat artar).
+
+**6. `@1-` + offset celiskisi.** DBC, ETC2'nin vites alanlarini hem isaretli
+(`@1-`) hem offset `-125` ile tanimlar; J1939'da SPN 523/524 isaretsiz +
+offset -125'tir. Standart yorum kullanilmistir (`encode_gear`).
+
 ---
 
 ## 2. Backend / Simulator
@@ -193,7 +268,7 @@ kismen dolar.
 | Modul | Sorumluluk |
 |---|---|
 | `app/j1939/core.py` | CAN ID kurulumu, bit paketleme, SPN olcekleme, cerceve nesnesi |
-| `app/j1939/messages.py` | Dokuz PGN'in kurucu/cozucu fonksiyonlari ve kayit defteri |
+| `app/j1939/messages.py` | On dokuz PGN'in kurucu/cozucu fonksiyonlari ve kayit defteri |
 | `app/fleet.py` | `vehicles.json` okuma, kaynak adres benzersizlik dogrulamasi |
 | `app/simulator.py` | 100 ms dongu, arac dinamigi, PGN bazli yayin periyotlari |
 | `app/hub.py` | WebSocket yayini; istemci basina kuyruk, yavas istemci akisi bloke etmez |
@@ -213,7 +288,9 @@ kismen dolar.
 - **Batarya**: motor yuku ve guc degerine gore tuketilir, frende rejenerasyon.
 
 Her tick'te cevrimici arac basina 4 cerceve (HVBATT saniyede bir eklenir):
-30 arac × 10 Hz × 4 mesaj ≈ **1200 frame/s**. Cevrimdisi yapilan arac hatta
+Varsayilan 100 ms tick'te periyodu ≤ 100 ms olan sekiz mesaj (CCVS1, EEC1,
+EEC2, ETC1, ETC2, EBC1, EBC2, LFE1) her tick yayinlanir:
+30 arac × 10 Hz × 8 mesaj ≈ **2400 frame/s**. Cevrimdisi yapilan arac hatta
 hic mesaj basmaz.
 
 > Not: EEC2'nin standart periyodu 50 ms'dir; simulasyon tick'i 100 ms oldugu
@@ -417,7 +494,7 @@ docker build --target test -t j1939/backend:test ./backend && docker run --rm j1
 1. **backend-test** — `ruff check` + `ruff format --check` + `pytest`
 2. **frontend-check** — JavaScript sozdizimi ve varlik dogrulamasi
 3. **docker-build** — imajlarin derlenmesi, testlerin konteyner icinde kosmasi
-4. **compose-smoke-test** — `docker compose up` sonrasi dokuz PGN'in kodlanmasi,
+4. **compose-smoke-test** — `docker compose up` sonrasi on dokuz PGN'in kodlanmasi,
    sinyal enjeksiyonu ve WebSocket akisinin uctan uca dogrulanmasi
 
 > Workflow dosyasi depo kokunde `.github/workflows/` altinda bulunmalidir.
@@ -432,7 +509,7 @@ cd backend && python -m pytest -v
 
 | Dosya | Kapsam |
 |---|---|
-| `tests/test_j1939.py` | Bes mesajin CAN ID'si, SPN cozunurlukleri, byte sirasi, kayit defteri |
+| `tests/test_j1939.py` | Her mesajin CAN ID'si, SPN cozunurlukleri, byte sirasi, kodla-coz dongusu, kayit defteri |
 | `tests/test_simulator.py` | Pedal, vites, fren, batarya, devir davranisi ve yayin periyotlari |
 | `tests/test_api.py` | REST uclari, dogrulama hatalari, WebSocket akisi ve komutlari |
 

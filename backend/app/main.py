@@ -33,16 +33,19 @@ from .j1939 import (
 )
 from .models import (
     AddVehicleRequest,
+    AmbientCommand,
     BatteryCommand,
     CruiseCommand,
     DecodeRequest,
     EncodeRequest,
     FaultCommand,
     FleetCommand,
+    FuelCommand,
     GearCommand,
     GearRangeCommand,
     ModeCommand,
     PedalCommand,
+    PtoCommand,
     SpeedCommand,
     ToggleCommand,
 )
@@ -319,6 +322,30 @@ async def set_cruise(vehicle_id: str, body: CruiseCommand, _=Depends(get_vehicle
     return {"state": simulator.set_cruise(vehicle_id, body.active, body.set_speed_kmh)}
 
 
+@app.post("/api/vehicles/{vehicle_id}/trailer", tags=["komut"])
+async def set_trailer(vehicle_id: str, body: ToggleCommand, _=Depends(get_vehicle_or_404)) -> dict:
+    """Ceki demiri baglantisi (SPN 1836 / EBC1)."""
+    return {"state": simulator.set_trailer(vehicle_id, body.value)}
+
+
+@app.post("/api/vehicles/{vehicle_id}/fuel", tags=["komut"])
+async def set_fuel(vehicle_id: str, body: FuelCommand, _=Depends(get_vehicle_or_404)) -> dict:
+    """Yakit deposu doluluklari (SPN 96 / 38 / DD)."""
+    return {"state": simulator.set_fuel(vehicle_id, body.fuel_level_pct, body.fuel_level2_pct)}
+
+
+@app.post("/api/vehicles/{vehicle_id}/ambient", tags=["komut"])
+async def set_ambient(vehicle_id: str, body: AmbientCommand, _=Depends(get_vehicle_or_404)) -> dict:
+    """Dis ortam sicakligi (SPN 171 / AMB)."""
+    return {"state": simulator.set_ambient(vehicle_id, body.ambient_air_temp_c)}
+
+
+@app.post("/api/vehicles/{vehicle_id}/pto", tags=["komut"])
+async def set_pto(vehicle_id: str, body: PtoCommand, _=Depends(get_vehicle_or_404)) -> dict:
+    """PTO governor durumu (SPN 976 / CCVS1)."""
+    return {"state": simulator.set_pto(vehicle_id, body.pto_state)}
+
+
 @app.post("/api/fleet/command", tags=["komut"])
 async def fleet_command(body: FleetCommand) -> dict:
     states = simulator.fleet_command(body.action, body.vehicle_ids)
@@ -516,6 +543,14 @@ async def _handle_ws_command(client: ClientConnection, message: dict) -> dict:
         "trigger_fault": lambda: simulator.trigger_fault(
             vehicle_id, message.get("spn"), message.get("fmi")
         ),
+        "set_trailer": lambda: simulator.set_trailer(vehicle_id, bool(message["value"])),
+        "set_fuel": lambda: simulator.set_fuel(
+            vehicle_id, message.get("fuel_level_pct"), message.get("fuel_level2_pct")
+        ),
+        "set_ambient": lambda: simulator.set_ambient(
+            vehicle_id, float(message["ambient_air_temp_c"])
+        ),
+        "set_pto": lambda: simulator.set_pto(vehicle_id, int(message["pto_state"])),
         "clear_faults": lambda: simulator.clear_faults(vehicle_id),
         "reset_trip": lambda: simulator.reset_trip(vehicle_id),
     }

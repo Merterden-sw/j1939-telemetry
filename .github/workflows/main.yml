@@ -178,12 +178,17 @@ jobs:
             "import json,sys; print(len(json.load(sys.stdin)['states']))")
           test "$count" = "30"
 
-          echo "--- 9 mesaj tanimli olmali ---"
+          echo "--- 19 mesaj tanimli olmali ---"
           curl -fsS http://localhost:8000/api/j1939/messages | python3 -c "
           import json,sys
           m = {x['acronym']: (x['pgn'], x['pgn_hex']) for x in json.load(sys.stdin)['messages']}
-          beklenen = {'CCVS1': (65265, '0xFEF1'), 'EEC2': (61443, '0xF003'),
-                      'ETC2': (61445, '0xF005'), 'EBC1': (61441, '0xF001'),
+          beklenen = {'CCVS1': (65265, '0xFEF1'), 'CCSS': (65096, '0xFE48'),
+                      'EEC1': (61444, '0xF004'), 'EEC2': (61443, '0xF003'),
+                      'ETC1': (61442, '0xF002'), 'ETC2': (61445, '0xF005'),
+                      'EBC1': (61441, '0xF001'), 'EBC2': (65215, '0xFEBF'),
+                      'LFE1': (65266, '0xFEF2'), 'ET1': (65262, '0xFEEE'),
+                      'EFLP1': (65263, '0xFEEF'), 'IC1': (65270, '0xFEF6'),
+                      'AMB': (65269, '0xFEF5'), 'DD': (65276, '0xFEFC'),
                       'HVBATT': (64923, '0xFD9B'), 'DM1': (65226, '0xFECA'),
                       'VEP1': (65267, '0xFEF3'), 'HOURS': (65253, '0xFEE5'),
                       'VDHR': (65248, '0xFEE0')}
@@ -243,7 +248,7 @@ jobs:
                   snapshot = json.loads(await ws.recv())
                   assert snapshot["type"] == "snapshot", snapshot["type"]
                   assert len(snapshot["states"]) == 30
-                  assert len(snapshot["meta"]["messages"]) == 9
+                  assert len(snapshot["meta"]["messages"]) == 19
 
                   await ws.send(json.dumps(
                       {"type": "subscribe", "vehicle_ids": ["volvo-fh16"]}))
@@ -262,7 +267,7 @@ jobs:
                       row = next((r for r in message["t"] if r[0] == "volvo-fh16"), None)
                       if row and abs(row[1] - 75) < 2:
                           hiz_ok = True
-                      if hiz_ok and len(gorulen) >= 9:
+                      if hiz_ok and len(gorulen) >= 17:
                           print(f"Telemetri dogrulandi: {row[1]} km/h, "
                                 f"vites {row[4]}{row[5]}, SOC %{row[7]}")
                           print(f"Gelen PGN'ler: {', '.join(sorted(gorulen))}")

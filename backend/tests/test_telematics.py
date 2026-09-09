@@ -181,3 +181,106 @@ class TestTelematicsEndpoints:
                     break
             else:
                 raise AssertionError("trigger_fault ack alinamadi")
+
+
+class TestDbcDerivedSignals:
+    """DBC sinyallerinin surus durumundan tutarli sekilde turetildigi."""
+
+    def test_engine_warms_up_from_ambient(self, sim):
+        state = sim.states["man-tgx"]
+        soguk = state.coolant_temp_c
+        assert soguk == pytest.approx(state.ambient_air_temp_c, abs=0.1)
+        sim.set_speed("man-tgx", 80, instant=True)
+        run_ticks(sim, 900)  # 90 saniye
+        isinmis = sim.state_of("man-tgx")["engine"]
+        assert isinmis["coolant_temp_c"] > soguk + 20
+        # Yag sogutma suyunu geriden takip eder
+        assert isinmis["oil_temp_c"] > soguk
+
+    def test_fuel_consumption_drains_tank_and_tracks_economy(self, sim):
+        onceki = sim.state_of("man-tgx")["ambient"]["fuel_level_pct"]
+        sim.set_speed("man-tgx", 90, instant=True)
+        run_ticks(sim, 600)
+        state = sim.state_of("man-tgx")
+        assert state["engine"]["fuel_rate_lph"] > 0
+        assert state["engine"]["instant_fuel_economy_kmpl"] > 0
+        assert state["ambient"]["fuel_level_pct"] < onceki
+
+    def test_electric_vehicle_reports_no_fuel_rate(self, sim):
+        elektrikli = next(v for v in sim.fleet if v.powertrain == "electric")
+        sim.set_speed(elektrikli.id, 70, instant=True)
+        run_ticks(sim, 50)
+        assert sim.state_of(elektrikli.id)["engine"]["fuel_rate_lph"] == 0.0
+
+    def test_shaft_speeds_follow_gear_ratio(self, sim):
+        sim.set_speed("man-tgx", 85, instant=True)
+        run_ticks(sim, 60)
+        state = sim.state_of("man-tgx")
+        aktarma = state["transmission"]
+        # Cikis mili = motor devri / aktarma orani
+        assert aktarma["output_shaft_rpm"] == pytest.approx(
+            state["engine_rpm"] / aktarma["gear_ratio"], rel=0.02
+        )
+        assert aktarma["driveline_engaged"] is True
+
+    def test_hard_braking_activates_abs_and_spreads_wheel_speeds(self, sim):
+        sim.set_speed("man-tgx", 90, instant=True)
+        run_ticks(sim, 5)
+        sakin = sim.state_of("man-tgx")["brakes"]["wheel_slip"]
+        sim.set_brake_pedal("man-tgx", 95)
+        run_ticks(sim, 3)
+        frenli = sim.state_of("man-tgx")["brakes"]
+        assert frenli["abs_active"] is True
+        assert frenli["total_brake_demand_pct"] == pytest.approx(95.0)
+        assert max(abs(x) for x in frenli["wheel_slip"]) > max(abs(x) for x in sakin)
+
+    def test_gear_change_opens_shift_and_clutch_window(self, sim):
+        sim.set_speed("man-tgx", 20, instant=True)
+        sim.tick()
+        sim.set_speed("man-tgx", 90, instant=True)
+        sim.tick()
+        assert sim.states["man-tgx"].shift_in_process is True
+        assert sim.states["man-tgx"].clutch_switch is True
+
+    def test_fleet_starts_with_varied_environments(self, sim):
+        sicakliklar = {round(s.ambient_air_temp_c, 1) for s in sim.states.values()}
+        depolar = {round(s.fuel_level_pct, 1) for s in sim.states.values()}
+        # 30 arac ayni degerle baslamamali
+        assert len(sicakliklar) > 15
+        assert len(depolar) > 15
+
+
+class TestDbcCommandEndpoints:
+    def test_trailer_toggle(self, client):
+        body = client.post("/api/vehicles/man-tgx/trailer", json={"value": True}).json()
+        assert body["state"]["brakes"]["trailer_connected"] is True
+        body = client.post("/api/vehicles/man-tgx/trailer", json={"value": False}).json()
+        assert body["state"]["brakes"]["trailer_connected"] is False
+
+    def test_fuel_levels(self, client):
+        body = client.post(
+            "/api/vehicles/man-tgx/fuel", json={"fuel_level_pct": 42, "fuel_level2_pct": 17}
+        ).json()
+        assert body["state"]["ambient"]["fuel_level_pct"] == 42
+        assert body["state"]["ambient"]["fuel_level2_pct"] == 17
+
+    def test_fuel_requires_a_field(self, client):
+        assert client.post("/api/vehicles/man-tgx/fuel", json={}).status_code == 422
+
+    def test_ambient_temperature(self, client):
+        body = client.post(
+            "/api/vehicles/man-tgx/ambient", json={"ambient_air_temp_c": -12.5}
+        ).json()
+        assert body["state"]["ambient"]["ambient_air_temp_c"] == -12.5
+
+    def test_ambient_out_of_range_rejected(self, client):
+        assert (
+            client.post("/api/vehicles/man-tgx/ambient", json={"ambient_air_temp_c": 200})
+        ).status_code == 422
+
+    def test_pto_state(self, client):
+        body = client.post("/api/vehicles/man-tgx/pto", json={"pto_state": 4}).json()
+        assert body["state"]["ambient"]["pto_state"] == 4
+
+    def test_pto_out_of_range_rejected(self, client):
+        assert client.post("/api/vehicles/man-tgx/pto", json={"pto_state": 20}).status_code == 422

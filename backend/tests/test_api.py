@@ -3,6 +3,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from app.j1939 import MESSAGES
 from app.main import app
 
 
@@ -26,22 +27,12 @@ class TestServiceEndpoints:
         body = client.get("/api/health").json()
         assert body["status"] == "ok"
         assert body["vehicles"] == 30
-        assert body["messages"] == 9
+        assert body["messages"] == len(MESSAGES)
 
     def test_meta_lists_all_messages(self, client):
         body = client.get("/api/meta").json()
         acronyms = {m["acronym"] for m in body["messages"]}
-        assert acronyms == {
-            "CCVS1",
-            "EEC2",
-            "ETC2",
-            "EBC1",
-            "HVBATT",
-            "DM1",
-            "VEP1",
-            "HOURS",
-            "VDHR",
-        }
+        assert acronyms == {m.acronym for m in MESSAGES.values()}
         assert body["vehicle_count"] == 30
         assert body["gear_ranges"] == ["P", "R", "N", "D"]
 
@@ -52,6 +43,17 @@ class TestServiceEndpoints:
         assert messages["ETC2"]["pgn"] == 61445 and messages["ETC2"]["pgn_hex"] == "0xF005"
         assert messages["EBC1"]["pgn"] == 61441 and messages["EBC1"]["pgn_hex"] == "0xF001"
         assert messages["HVBATT"]["pgn"] == 64923 and messages["HVBATT"]["pgn_hex"] == "0xFD9B"
+        # DBC'den gelen mesajlar
+        assert messages["EEC1"]["pgn"] == 61444 and messages["EEC1"]["pgn_hex"] == "0xF004"
+        assert messages["ETC1"]["pgn"] == 61442 and messages["ETC1"]["pgn_hex"] == "0xF002"
+        assert messages["EBC2"]["pgn"] == 65215 and messages["EBC2"]["pgn_hex"] == "0xFEBF"
+        assert messages["LFE1"]["pgn"] == 65266 and messages["LFE1"]["pgn_hex"] == "0xFEF2"
+        assert messages["ET1"]["pgn"] == 65262 and messages["ET1"]["pgn_hex"] == "0xFEEE"
+        assert messages["EFLP1"]["pgn"] == 65263 and messages["EFLP1"]["pgn_hex"] == "0xFEEF"
+        assert messages["IC1"]["pgn"] == 65270 and messages["IC1"]["pgn_hex"] == "0xFEF6"
+        assert messages["AMB"]["pgn"] == 65269 and messages["AMB"]["pgn_hex"] == "0xFEF5"
+        assert messages["DD"]["pgn"] == 65276 and messages["DD"]["pgn_hex"] == "0xFEFC"
+        assert messages["CCSS"]["pgn"] == 65096 and messages["CCSS"]["pgn_hex"] == "0xFE48"
 
     def test_vehicle_list_is_grouped_by_brand(self, client):
         body = client.get("/api/vehicles").json()
@@ -64,17 +66,7 @@ class TestServiceEndpoints:
         assert vehicle["display_name"] == "Volvo Trucks FH16"
         assert vehicle["can_id_hex"] == "18FEF106"
         assert vehicle["powertrain"] in {"diesel", "hybrid", "electric"}
-        assert set(vehicle["can_ids"]) == {
-            "CCVS1",
-            "EEC2",
-            "ETC2",
-            "EBC1",
-            "HVBATT",
-            "DM1",
-            "VEP1",
-            "HOURS",
-            "VDHR",
-        }
+        assert set(vehicle["can_ids"]) == {m.acronym for m in MESSAGES.values()}
 
     def test_unknown_vehicle_returns_404(self, client):
         assert client.get("/api/vehicles/yok-boyle-bir-arac").status_code == 404
@@ -257,7 +249,7 @@ class TestWebSocket:
             message = ws.receive_json()
             assert message["type"] == "snapshot"
             assert len(message["brands"]) == 10
-            assert len(message["meta"]["messages"]) == 9
+            assert len(message["meta"]["messages"]) == len(MESSAGES)
 
     def test_speed_command_over_socket(self, client):
         with client.websocket_connect("/ws") as ws:
@@ -303,19 +295,9 @@ class TestWebSocket:
                     continue
                 for frame in message.get("frames", []):
                     seen.add(frame["acronym"])
-                if len(seen) >= 9:
+                if len(seen) >= len(MESSAGES):
                     break
-            assert seen == {
-                "CCVS1",
-                "EEC2",
-                "ETC2",
-                "EBC1",
-                "HVBATT",
-                "DM1",
-                "VEP1",
-                "HOURS",
-                "VDHR",
-            }
+            assert seen == {m.acronym for m in MESSAGES.values()}
 
     def test_frames_carry_decoded_signals(self, client):
         with client.websocket_connect("/ws") as ws:

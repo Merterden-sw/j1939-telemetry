@@ -316,6 +316,207 @@
     });
   }
 
+  /* ------------------------------------------- DBC sinyal panelleri (sekmeler)
+
+     Motor / Aktarma / Fren / Ortam sekmeleri asagidaki bildirimsel tanimdan
+     uretilir. Her satir bir SPN'e karsilik gelir; DOM bir kez kurulur, telemetri
+     akisinda yalnizca deger hucreleri guncellenir.
+     ------------------------------------------------------------------------ */
+
+  const TORQUE_MODE_LABELS = {
+    0: "Rolanti", 1: "Pedal", 2: "Cruise", 3: "PTO", 4: "Yol Hizi",
+    5: "ASR", 6: "Sanziman", 7: "ABS", 8: "Tork Limiti", 9: "Yuksek Hiz", 14: "Veri Yok",
+  };
+  const STARTER_MODE_LABELS = {
+    0: "Mars Kapali", 1: "Mars Aktif", 2: "Calisiyor", 14: "Veri Yok",
+  };
+  const PTO_STATE_LABELS = {
+    0: "Kapali", 1: "Bekliyor", 2: "Ayarlandi", 3: "Yavaslatma",
+    4: "Hizlandirma", 5: "Devrede", 31: "Veri Yok",
+  };
+
+  /** Sinyal satiri: [durum anahtari, etiket, SPN, birim, ondalik] veya tip alani. */
+  const SIGNAL_PANELS = {
+    engine: [
+      ["Motor Torku · EEC1 / EEC2", [
+        ["driver_demand_torque_pct", "Surucu Talebi", 512, "%", 0],
+        ["actual_engine_torque_pct", "Gercek Tork", 513, "%", 0],
+        ["demand_engine_torque_pct", "Talep Edilen Tork", 2432, "%", 0],
+        ["max_available_torque_pct", "Azami Kullanilabilir", 539, "%", 0],
+        ["parasitic_losses_pct", "Parazitik Kayiplar", 1481, "%", 0],
+        ["torque_mode", "Tork Modu", 899, "enum", TORQUE_MODE_LABELS],
+        ["starter_mode", "Mars Modu", 1675, "enum", STARTER_MODE_LABELS],
+      ]],
+      ["Sicakliklar · ET1 / IC1", [
+        ["coolant_temp_c", "Sogutma Suyu", 110, "°C", 1],
+        ["oil_temp_c", "Motor Yagi", 175, "°C", 1],
+        ["turbo_oil_temp_c", "Turbo Yagi", 176, "°C", 1],
+        ["fuel_temp_c", "Yakit", 174, "°C", 1],
+        ["intake_manifold_temp_c", "Emme Manifoldu", 105, "°C", 1],
+        ["exhaust_gas_temp_c", "Egzoz Gazi", 173, "°C", 1],
+      ]],
+      ["Basinclar · EFLP1 / IC1", [
+        ["oil_pressure_kpa", "Yag Basinci", 100, "kPa", 0],
+        ["boost_pressure_kpa", "Turbo Basinci", 102, "kPa", 0],
+        ["fuel_delivery_pressure_kpa", "Yakit Besleme", 94, "kPa", 0],
+        ["coolant_pressure_kpa", "Sogutma Devresi", 109, "kPa", 0],
+        ["particulate_trap_pressure_kpa", "Partikul Filtresi", 81, "kPa", 2],
+        ["air_filter_diff_pressure_kpa", "Hava Filtresi", 107, "kPa", 2],
+        ["coolant_filter_diff_pressure_kpa", "Su Filtresi", 112, "kPa", 2],
+      ]],
+      ["Seviye ve Yakit · LFE1 / EFLP1", [
+        ["oil_level_pct", "Yag Seviyesi", 98, "%", 1],
+        ["coolant_level_pct", "Sogutma Suyu Seviyesi", 111, "%", 1],
+        ["fuel_rate_lph", "Yakit Tuketimi", 183, "L/h", 2],
+        ["instant_fuel_economy_kmpl", "Anlik Ekonomi", 184, "km/L", 2],
+        ["average_fuel_economy_kmpl", "Ortalama Ekonomi", 185, "km/L", 2],
+        ["throttle_valve_pct", "Gaz Kelebegi", 51, "%", 1],
+      ]],
+    ],
+    transmission: [
+      ["Mil Devirleri · ETC1 / ETC2", [
+        ["input_shaft_rpm", "Giris Mili", 161, "rpm", 0],
+        ["output_shaft_rpm", "Cikis Mili", 191, "rpm", 0],
+        ["gear_ratio", "Aktarma Orani", 526, "", 3],
+        ["clutch_slip_pct", "Debriyaj Kaymasi", 522, "%", 1],
+      ]],
+      ["Durumlar · ETC1", [
+        ["driveline_engaged", "Aktarma Devrede", 560, "bool"],
+        ["torque_converter_lockup", "Konvertor Kilidi", 573, "bool"],
+        ["shift_in_process", "Vites Degisiyor", 574, "bool"],
+      ]],
+    ],
+    brakes: [
+      ["Fren Talebi · EBC1", [
+        ["total_brake_demand_pct", "Toplam Fren Talebi", 2911, "%", 1],
+        ["foundation_brakes_in_use", "Servis Frenleri", 4251, "bool"],
+      ]],
+      ["ABS / ASR · EBC1", [
+        ["abs_active", "ABS Aktif", 563, "bool"],
+        ["abs_fully_operational", "ABS Tam Calisir", 575, "bool"],
+        ["asr_engine_control", "ASR Motor Kontrolu", 561, "bool"],
+        ["asr_brake_control", "ASR Fren Kontrolu", 562, "bool"],
+        ["atc_asr_information", "ATC/ASR Bilgi", 1793, "bool"],
+      ]],
+      ["Uyarilar · EBC1", [
+        ["ebs_red_warning", "EBS Kirmizi Uyari", 1438, "alarm"],
+        ["ebs_amber_warning", "EBS Sari Uyari", 1439, "alarm"],
+        ["trailer_connected", "Treyler Bagli", 1836, "bool"],
+      ]],
+    ],
+    ambient: [
+      ["Ortam Kosullari · AMB", [
+        ["ambient_air_temp_c", "Dis Hava", 171, "°C", 1],
+        ["cab_interior_temp_c", "Kabin Ici", 170, "°C", 1],
+        ["road_surface_temp_c", "Yol Yuzeyi", 79, "°C", 1],
+        ["air_inlet_temp_c", "Hava Girisi", 172, "°C", 1],
+        ["barometric_pressure_kpa", "Barometrik Basinc", 108, "kPa", 1],
+      ]],
+      ["Gosterge Paneli · DD", [
+        ["fuel_level_pct", "Yakit Deposu 1", 96, "%", 1],
+        ["fuel_level2_pct", "Yakit Deposu 2", 38, "%", 1],
+        ["washer_fluid_level_pct", "Cam Suyu", 80, "%", 1],
+        ["cargo_ambient_temp_c", "Kargo Sicakligi", 169, "°C", 1],
+        ["seat_belt_fastened", "Emniyet Kemeri", 1856, "bool"],
+        ["exterior_light_on", "Dis Aydinlatma", 1883, "bool"],
+        ["maintenance_lamp_on", "Bakim Lambasi", 1420, "alarm"],
+      ]],
+      ["Guc Cikisi · CCVS1 / HOURS", [
+        ["pto_state", "PTO Durumu", 976, "enum", PTO_STATE_LABELS],
+        ["pto_hours", "PTO Calisma Saati", 248, "h", 2],
+      ]],
+    ],
+  };
+
+  const WHEEL_LABELS = [
+    ["On Sol", 905], ["On Sag", 906],
+    ["Arka-1 Sol", 907], ["Arka-1 Sag", 908],
+    ["Arka-2 Sol", 909], ["Arka-2 Sag", 910],
+  ];
+
+  /** Bir sinyal satirinin metnini ve durum sinifini uretir. */
+  function formatSignal(value, unit, precision) {
+    if (value === null || value === undefined) return { text: "—", state: "na" };
+    if (unit === "bool" || unit === "alarm") {
+      const on = Boolean(value);
+      const state = unit === "alarm" ? (on ? "alarm" : "ok") : on ? "on" : "off";
+      return { text: on ? "ACIK" : "KAPALI", state };
+    }
+    if (unit === "enum") {
+      return { text: precision[value] ?? String(value), state: "text" };
+    }
+    const text = Number(value).toFixed(precision);
+    return { text: unit ? `${text} ${unit}` : text, state: "value" };
+  }
+
+  /** Bir sekmenin DOM'unu kurar; key -> deger hucresi eslemesi dondurur. */
+  function renderSignalPanel(container, groups) {
+    container.textContent = "";
+    const refs = new Map();
+
+    groups.forEach(([title, rows]) => {
+      const group = document.createElement("div");
+      group.className = "signal-group";
+      const heading = document.createElement("h4");
+      heading.className = "signal-group__title";
+      heading.textContent = title;
+      group.appendChild(heading);
+
+      const grid = document.createElement("div");
+      grid.className = "signal-grid";
+      rows.forEach(([key, label, spn, unit, precision]) => {
+        const cell = document.createElement("div");
+        cell.className = "signal";
+        cell.innerHTML = `
+          <span class="signal__label">${label}<i>SPN ${spn}</i></span>
+          <span class="signal__value">—</span>`;
+        grid.appendChild(cell);
+        refs.set(key, { node: cell.querySelector(".signal__value"), unit, precision });
+      });
+
+      group.appendChild(grid);
+      container.appendChild(group);
+    });
+
+    return refs;
+  }
+
+  /** Sinyal hucrelerini durum sozlugundeki degerlerle gunceller. */
+  function updateSignalPanel(refs, data) {
+    if (!refs || !data) return;
+    refs.forEach((ref, key) => {
+      const { text, state } = formatSignal(data[key], ref.unit, ref.precision);
+      if (ref.node.textContent !== text) ref.node.textContent = text;
+      if (ref.node.dataset.state !== state) ref.node.dataset.state = state;
+    });
+  }
+
+  function renderWheelGrid(container) {
+    container.textContent = "";
+    const nodes = WHEEL_LABELS.map(([label, spn]) => {
+      const cell = document.createElement("div");
+      cell.className = "signal";
+      cell.innerHTML = `
+        <span class="signal__label">${label}<i>SPN ${spn}</i></span>
+        <span class="signal__value">—</span>`;
+      container.appendChild(cell);
+      return cell.querySelector(".signal__value");
+    });
+    return nodes;
+  }
+
+  function updateWheelGrid(nodes, wheelSlip) {
+    if (!nodes) return;
+    const values = wheelSlip || [];
+    nodes.forEach((node, index) => {
+      const value = values[index];
+      const text = value === undefined ? "—" : `${Number(value) >= 0 ? "+" : ""}${fmt(value, 2)} km/h`;
+      if (node.textContent !== text) node.textContent = text;
+      // Belirgin ayrisma (ABS/ASR) vurgulanir.
+      node.dataset.state = Math.abs(Number(value) || 0) > 1.0 ? "alarm" : "value";
+    });
+  }
+
   /* ------------------------------------------------------- telematik okumalar */
 
   function updateTelematicsReadouts(vehicleState) {
@@ -424,6 +625,11 @@
     renderFrameTable,
     updateFrameRow,
     switchTab,
+    SIGNAL_PANELS,
+    renderSignalPanel,
+    updateSignalPanel,
+    renderWheelGrid,
+    updateWheelGrid,
     updateTelematicsReadouts,
     updateMap,
     invalidateMapSize,

@@ -50,12 +50,19 @@ class TestFleetWiring:
         assert set(vehicle.can_ids) == set(MESSAGES)
 
 
+def fast_pgns(sim):
+    """Yayin periyodu tick suresine esit veya kisa olan mesajlar (her tick yayinlanir)."""
+    return {pgn for pgn, msg in MESSAGES.items() if msg.transmit_rate_ms <= sim.settings.tick_ms}
+
+
 class TestTransmitRates:
     def test_fast_messages_emit_every_tick(self, sim):
         frames = sim.tick()
-        # 30 arac x 4 mesaj (HVBATT haric)
-        assert len(frames) == 120
-        assert {f["pgn"] for f in frames} == {PGN_CCVS1, PGN_EEC2, PGN_ETC2, PGN_EBC1}
+        expected = fast_pgns(sim)
+        # Tick 100 ms oldugu icin 10/20/50/100 ms'lik mesajlarin hepsi her
+        # tick'te yayinlanir (bkz. Simulator._intervals).
+        assert {f["pgn"] for f in frames} == expected
+        assert len(frames) == 30 * len(expected)
 
     def test_battery_emits_once_per_second(self, sim):
         battery_ticks = sum(1 for _ in range(10) if any(f["pgn"] == PGN_HVBATT for f in sim.tick()))
@@ -65,7 +72,7 @@ class TestTransmitRates:
         sim.set_online("isuzu-elf", False)
         frames = sim.tick()
         assert all(f["vehicle_id"] != "isuzu-elf" for f in frames)
-        assert len(frames) == 29 * 4
+        assert len(frames) == 29 * len(fast_pgns(sim))
 
 
 class TestSpeedInjection:
@@ -301,7 +308,7 @@ class TestSnapshot:
         snapshot = sim.snapshot()
         assert len(snapshot["brands"]) == 10
         assert len(snapshot["states"]) == 30
-        assert len(snapshot["meta"]["messages"]) == 9
+        assert len(snapshot["meta"]["messages"]) == len(MESSAGES)
 
     def test_light_states_omit_frames(self, sim):
         sim.tick()
@@ -310,9 +317,14 @@ class TestSnapshot:
         assert "gear" in light["man-tgx"] and "soc_pct" in light["man-tgx"]
 
     def test_stats_track_transmitted_frames(self, sim):
-        run_ticks(sim, 10)
-        # CCVS1/EEC2/ETC2/EBC1 her tick (4x10=40) + HVBATT/DM1/VEP1/VDHR
-        # tick 10'da bir kez (4x1=4) = 44 cerceve/arac; HOURS 50 tick'te bir,
-        # 10 tick icinde henuz yayinlanmadi.
-        assert sim.stats()["frames_sent"] == 30 * 44
-        assert sim.stats()["message_count"] == 9
+        ticks = 10
+        run_ticks(sim, ticks)
+        # Her mesaj kendi periyoduna gore yayinlanir: 10 tick icinde bir mesaj
+        # (tick / interval) kez gonderilir. 5000 ms'lik CCSS ve HOURS bu surede
+        # henuz yayinlanmaz.
+        per_vehicle = sum(
+            ticks // max(1, round(msg.transmit_rate_ms / sim.settings.tick_ms))
+            for msg in MESSAGES.values()
+        )
+        assert sim.stats()["frames_sent"] == 30 * per_vehicle
+        assert sim.stats()["message_count"] == len(MESSAGES)

@@ -126,6 +126,10 @@
 
             <div class="tabs" role="tablist" aria-label="Telemetri sekmeleri">
               <button class="tab is-active" data-tab="telemetry" role="tab">Telemetri</button>
+              <button class="tab" data-tab="engine" role="tab">Motor</button>
+              <button class="tab" data-tab="transmission" role="tab">Aktarma</button>
+              <button class="tab" data-tab="brakes" role="tab">Fren</button>
+              <button class="tab" data-tab="ambient" role="tab">Ortam</button>
               <button class="tab" data-tab="location" role="tab">Konum</button>
               <button class="tab" data-tab="dtc" role="tab">Ariza <span class="tab__badge" id="dtc-count" hidden>0</span></button>
               <button class="tab" data-tab="score" role="tab">Skor</button>
@@ -271,6 +275,51 @@
             </div>
 
             </div> <!-- /tabpanel: telemetry -->
+
+            <!-- ------------------------------- DBC sistem sekmeleri (Motor) -->
+            <div class="tabpanel" data-tabpanel="engine" hidden>
+              <div class="signal-panel" id="panel-engine"></div>
+              <label class="field" for="ambient-slider">
+                <span class="field__label">
+                  Dis Ortam Sicakligi <i>SPN 171 / AMB</i>
+                  <b class="field__value" id="ambient-value">18 &deg;C</b>
+                </span>
+                <input type="range" id="ambient-slider" min="-40" max="60" step="1" value="18"
+                       class="slider" />
+              </label>
+              <label class="field" for="fuel-slider">
+                <span class="field__label">
+                  Yakit Seviyesi <i>SPN 96 / DD</i>
+                  <b class="field__value" id="fuel-value">80%</b>
+                </span>
+                <input type="range" id="fuel-slider" min="0" max="100" step="1" value="80"
+                       class="slider" />
+              </label>
+            </div>
+
+            <!-- ---------------------------------------------------- Aktarma -->
+            <div class="tabpanel" data-tabpanel="transmission" hidden>
+              <div class="signal-panel" id="panel-transmission"></div>
+            </div>
+
+            <!-- -------------------------------------------------------- Fren -->
+            <div class="tabpanel" data-tabpanel="brakes" hidden>
+              <div class="signal-panel" id="panel-brakes"></div>
+              <div class="signal-group">
+                <h4 class="signal-group__title">Bagil Tekerlek Hizlari <i>SPN 905-910 / EBC2</i></h4>
+                <div class="wheel-grid" id="wheel-grid"></div>
+              </div>
+              <div class="toggles">
+                <button class="toggle" id="tg-trailer">
+                  <span class="toggle__led"></span>Treyler Bagli (SPN 1836)
+                </button>
+              </div>
+            </div>
+
+            <!-- ------------------------------------------------------- Ortam -->
+            <div class="tabpanel" data-tabpanel="ambient" hidden>
+              <div class="signal-panel" id="panel-ambient"></div>
+            </div>
 
             <!-- ----------------------------------------------------- Konum -->
             <div class="tabpanel" data-tabpanel="location" hidden>

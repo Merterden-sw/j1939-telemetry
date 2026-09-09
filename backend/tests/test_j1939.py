@@ -12,16 +12,26 @@ from app.j1939 import (
     PGN_HVBATT,
     SPN84_MAX_KMH,
     J1939Error,
+    build_amb,
     build_can_id,
+    build_ccss,
     build_ccvs1,
     build_ccvs1_frame,
+    build_dd,
     build_dm1,
     build_ebc1,
+    build_ebc2,
+    build_eec1,
     build_eec2,
+    build_eflp1,
+    build_et1,
+    build_etc1,
     build_etc2,
     build_frame,
     build_hours,
     build_hvbatt,
+    build_ic1,
+    build_lfe1,
     build_vdhr,
     build_vep1,
     decode_can_id,
@@ -34,14 +44,24 @@ from app.j1939 import (
     encode_range,
     encode_wheel_speed,
     pack_2bit,
+    parse_amb,
+    parse_ccss,
     parse_ccvs1,
+    parse_dd,
     parse_dm1,
     parse_ebc1,
+    parse_ebc2,
+    parse_eec1,
     parse_eec2,
+    parse_eflp1,
+    parse_et1,
+    parse_etc1,
     parse_etc2,
     parse_frame,
     parse_hours,
     parse_hvbatt,
+    parse_ic1,
+    parse_lfe1,
     parse_vdhr,
     parse_vep1,
     unpack_2bit,
@@ -284,20 +304,281 @@ class TestHvBattery:
         assert build_hvbatt({"soc_pct": 50, "soh_pct": 50})[2:] == b"\xff" * 6
 
 
+class TestDbcMessages:
+    """DBC dosyasindan gelen mesajlarin kodla-coz dongusu."""
+
+    def test_eec1_round_trip(self):
+        data = build_eec1(
+            {
+                "torque_mode": 1,
+                "driver_demand_torque_pct": 42,
+                "actual_engine_torque_pct": -30,
+                "engine_rpm": 1450.0,
+                "engine_source_address": 0x00,
+                "starter_mode": 2,
+                "demand_engine_torque_pct": 40,
+            }
+        )
+        out = parse_eec1(data)
+        assert out["spn_899_engine_torque_mode"] == 1
+        assert out["spn_512_driver_demand_torque_pct"] == 42
+        assert out["spn_513_actual_engine_torque_pct"] == -30
+        assert out["spn_190_engine_speed_rpm"] == pytest.approx(1450.0)
+        assert out["spn_1483_engine_source_address"] == 0
+        assert out["spn_1675_starter_mode"] == 2
+        assert out["spn_2432_demand_engine_torque_pct"] == 40
+
+    def test_eec1_torque_offset_covers_negative_range(self):
+        """SPN 512/513: -125..+125 %, offset -125 ile tek byte'a sigar."""
+        for value in (-125, -60, 0, 60, 125):
+            data = build_eec1({"driver_demand_torque_pct": value})
+            assert parse_eec1(data)["spn_512_driver_demand_torque_pct"] == value
+
+    def test_etc1_round_trip(self):
+        data = build_etc1(
+            {
+                "driveline_engaged": True,
+                "torque_converter_lockup": True,
+                "shift_in_process": False,
+                "output_shaft_rpm": 1326.0,
+                "input_shaft_rpm": 1034.0,
+                "clutch_slip_pct": 12.4,
+                "transmission_source_address": 3,
+            }
+        )
+        out = parse_etc1(data)
+        assert out["spn_560_driveline_engaged"] == 1
+        assert out["spn_573_torque_converter_lockup"] == 1
+        assert out["spn_574_shift_in_process"] == 0
+        assert out["spn_191_output_shaft_rpm"] == pytest.approx(1326.0)
+        assert out["spn_161_input_shaft_rpm"] == pytest.approx(1034.0)
+        assert out["spn_522_clutch_slip_pct"] == pytest.approx(12.4)
+        assert out["spn_1482_transmission_source_address"] == 3
+
+    def test_ebc2_relative_speeds_signed_range(self):
+        """SPN 905-910: offset -7.8125, 1/16 km/h cozunurluk."""
+        data = build_ebc2(
+            {
+                "front_axle_speed_kmh": 87.5,
+                "rel_speed_front_left": -7.8125,
+                "rel_speed_front_right": 0.0,
+                "rel_speed_rear1_left": 7.8125,
+                "rel_speed_rear1_right": -0.25,
+            }
+        )
+        out = parse_ebc2(data)
+        assert out["spn_904_front_axle_speed_kmh"] == pytest.approx(87.5)
+        assert out["spn_905_rel_speed_front_left_kmh"] == pytest.approx(-7.8125)
+        assert out["spn_906_rel_speed_front_right_kmh"] == pytest.approx(0.0)
+        assert out["spn_907_rel_speed_rear1_left_kmh"] == pytest.approx(7.8125)
+        assert out["spn_908_rel_speed_rear1_right_kmh"] == pytest.approx(-0.25)
+
+    def test_lfe1_round_trip(self):
+        data = build_lfe1(
+            {
+                "fuel_rate_lph": 28.4,
+                "instant_fuel_economy_kmpl": 3.08,
+                "average_fuel_economy_kmpl": 3.4,
+                "throttle_valve_pct": 36.0,
+            }
+        )
+        out = parse_lfe1(data)
+        assert out["spn_183_fuel_rate_lph"] == pytest.approx(28.4, abs=0.05)
+        assert out["spn_184_instant_fuel_economy_kmpl"] == pytest.approx(3.08, abs=0.01)
+        assert out["spn_185_average_fuel_economy_kmpl"] == pytest.approx(3.4, abs=0.01)
+        assert out["spn_51_throttle_valve_pct"] == pytest.approx(36.0)
+
+    def test_et1_round_trip(self):
+        data = build_et1(
+            {
+                "coolant_temp_c": 88,
+                "fuel_temp_c": -40,
+                "oil_temp_c": 104.5,
+                "turbo_oil_temp_c": 118.0,
+            }
+        )
+        out = parse_et1(data)
+        assert out["spn_110_coolant_temp_c"] == 88
+        assert out["spn_174_fuel_temp_c"] == -40
+        assert out["spn_175_oil_temp_c"] == pytest.approx(104.5)
+        assert out["spn_176_turbo_oil_temp_c"] == pytest.approx(118.0)
+
+    def test_eflp1_round_trip(self):
+        data = build_eflp1(
+            {
+                "fuel_delivery_pressure_kpa": 380,
+                "oil_level_pct": 86,
+                "oil_pressure_kpa": 412,
+                "coolant_pressure_kpa": 120,
+                "coolant_level_pct": 92,
+            }
+        )
+        out = parse_eflp1(data)
+        assert out["spn_94_fuel_delivery_pressure_kpa"] == 380
+        assert out["spn_98_oil_level_pct"] == pytest.approx(86.0)
+        assert out["spn_100_oil_pressure_kpa"] == 412
+        assert out["spn_109_coolant_pressure_kpa"] == 120
+        assert out["spn_111_coolant_level_pct"] == pytest.approx(92.0)
+
+    def test_ic1_round_trip(self):
+        data = build_ic1(
+            {
+                "particulate_trap_pressure_kpa": 3.5,
+                "boost_pressure_kpa": 168,
+                "intake_manifold_temp_c": 52,
+                "air_filter_diff_pressure_kpa": 1.15,
+                "exhaust_gas_temp_c": 421.5,
+                "coolant_filter_diff_pressure_kpa": 2.0,
+            }
+        )
+        out = parse_ic1(data)
+        assert out["spn_81_particulate_trap_pressure_kpa"] == pytest.approx(3.5)
+        assert out["spn_102_boost_pressure_kpa"] == 168
+        assert out["spn_105_intake_manifold_temp_c"] == 52
+        assert out["spn_107_air_filter_diff_pressure_kpa"] == pytest.approx(1.15)
+        assert out["spn_173_exhaust_gas_temp_c"] == pytest.approx(421.5)
+        assert out["spn_112_coolant_filter_diff_pressure_kpa"] == pytest.approx(2.0)
+
+    def test_amb_round_trip(self):
+        data = build_amb(
+            {
+                "barometric_pressure_kpa": 99.5,
+                "cab_interior_temp_c": 22.0,
+                "ambient_air_temp_c": -18.5,
+                "air_inlet_temp_c": 19,
+                "road_surface_temp_c": 24.0,
+            }
+        )
+        out = parse_amb(data)
+        assert out["spn_108_barometric_pressure_kpa"] == pytest.approx(99.5)
+        assert out["spn_170_cab_interior_temp_c"] == pytest.approx(22.0)
+        assert out["spn_171_ambient_air_temp_c"] == pytest.approx(-18.5)
+        assert out["spn_172_air_inlet_temp_c"] == 19
+        assert out["spn_79_road_surface_temp_c"] == pytest.approx(24.0)
+
+    def test_dd_round_trip(self):
+        data = build_dd(
+            {
+                "washer_fluid_level_pct": 70,
+                "fuel_level_pct": 64.4,
+                "fuel_level2_pct": 51.2,
+                "cargo_ambient_temp_c": 6.0,
+                "seat_belt_fastened": True,
+                "exterior_light_on": True,
+                "maintenance_lamp_on": False,
+            }
+        )
+        out = parse_dd(data)
+        assert out["spn_80_washer_fluid_level_pct"] == pytest.approx(70.0)
+        assert out["spn_96_fuel_level_pct"] == pytest.approx(64.4)
+        assert out["spn_38_fuel_level2_pct"] == pytest.approx(51.2)
+        assert out["spn_169_cargo_ambient_temp_c"] == pytest.approx(6.0)
+        assert out["spn_1856_seat_belt_fastened"] == 1
+        assert out["spn_1883_exterior_light_on"] == 1
+        assert out["spn_1420_maintenance_lamp_on"] == 0
+
+    def test_ccss_round_trip(self):
+        out = parse_ccss(
+            build_ccss(
+                {
+                    "cruise_high_limit_kmh": 95,
+                    "cruise_low_limit_kmh": 30,
+                    "max_speed_limit_kmh": 90,
+                }
+            )
+        )
+        assert out["spn_1085_cruise_high_limit_kmh"] == 95
+        assert out["spn_1086_cruise_low_limit_kmh"] == 30
+        assert out["spn_1087_max_vehicle_speed_limit_kmh"] == 90
+
+    def test_ccvs1_carries_dbc_cruise_switches(self):
+        out = parse_ccvs1(
+            build_ccvs1(
+                {
+                    "speed_kmh": 60.0,
+                    "cruise_active": True,
+                    "cruise_enable": True,
+                    "clutch_switch": True,
+                    "cruise_set_switch": True,
+                    "cruise_resume_switch": True,
+                    "pto_state": 0,
+                }
+            )
+        )
+        assert out["spn_598_clutch_switch"] == 1
+        assert out["spn_599_cruise_set_switch"] == 1
+        assert out["spn_601_cruise_resume_switch"] == 1
+        assert out["spn_600_cruise_coast_switch"] == 0
+        assert out["spn_527_cruise_state"] == 4
+
+    def test_hours_carries_pto_hours(self):
+        out = parse_hours(build_hours({"engine_hours": 5321.4, "pto_hours": 118.25}))
+        assert out["spn_247_engine_hours"] == pytest.approx(5321.4, abs=0.05)
+        assert out["spn_248_pto_hours"] == pytest.approx(118.25, abs=0.05)
+
+    def test_ebc1_carries_dbc_status_bits(self):
+        out = parse_ebc1(
+            build_ebc1(
+                {
+                    "brake_pedal_pct": 80.0,
+                    "abs_active": True,
+                    "total_brake_demand_pct": 80.0,
+                    "trailer_connected": True,
+                    "abs_fully_operational": True,
+                    "brake_source_address": 11,
+                }
+            )
+        )
+        assert out["spn_563_abs_active"] == 1
+        assert out["spn_2911_total_brake_demand_pct"] == pytest.approx(80.0)
+        assert out["spn_1836_trailer_connected"] == 1
+        assert out["spn_575_abs_fully_operational"] == 1
+        assert out["spn_1481_brake_source_address"] == 11
+
+    def test_eec2_carries_torque_availability(self):
+        out = parse_eec2(
+            build_eec2(
+                {
+                    "accel_pedal_pct": 36.4,
+                    "engine_load_pct": 57,
+                    "max_available_torque_pct": 95,
+                    "parasitic_losses_pct": 12,
+                }
+            )
+        )
+        assert out["spn_539_max_available_torque_pct"] == 95
+        assert out["spn_1481_parasitic_losses_pct"] == 12
+
+
 class TestRegistry:
-    def test_nine_messages_registered(self):
-        assert len(MESSAGES) == 9
+    def test_all_messages_registered(self):
+        assert len(MESSAGES) == 19
         assert {m.acronym for m in MESSAGES.values()} == {
             "CCVS1",
+            "CCSS",
+            "EEC1",
             "EEC2",
+            "ETC1",
             "ETC2",
             "EBC1",
+            "EBC2",
+            "LFE1",
+            "ET1",
+            "EFLP1",
+            "IC1",
+            "AMB",
+            "DD",
             "HVBATT",
             "DM1",
             "VEP1",
             "HOURS",
             "VDHR",
         }
+
+    def test_pgns_are_unique(self):
+        """Ayni PGN'i iki mesaj paylasamaz: kayit defteri PGN ile anahtarlanir."""
+        pgns = [m.pgn for m in MESSAGES.values()]
+        assert len(pgns) == len(set(pgns))
 
     @pytest.mark.parametrize("pgn", list(MESSAGES))
     def test_every_message_builds_eight_bytes(self, pgn):
@@ -376,9 +657,19 @@ class TestFrameGeneric:
         rates = {m.acronym: m.transmit_rate_ms for m in MESSAGES.values()}
         assert rates == {
             "CCVS1": 100,
+            "CCSS": 5000,
+            "EEC1": 20,
             "EEC2": 50,
+            "ETC1": 20,
             "ETC2": 100,
             "EBC1": 100,
+            "EBC2": 100,
+            "LFE1": 100,
+            "ET1": 1000,
+            "EFLP1": 500,
+            "IC1": 500,
+            "AMB": 1000,
+            "DD": 1000,
             "HVBATT": 1000,
             "DM1": 1000,
             "VEP1": 1000,
